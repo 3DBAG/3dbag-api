@@ -78,6 +78,20 @@ paths:
           $ref: '#/components/responses/Collections'
         '500':
           $ref: '#/components/responses/ServerError'
+  '/collections/pand':
+    get:
+      tags:
+        - Capabilities
+      summary: 3D building models based on the 'pand' layer of the BAG data set
+      operationId: describeCollection
+      responses:
+        '200':
+          $ref: '#/components/responses/Collection'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 
 components:
   responses:
@@ -124,6 +138,9 @@ components:
         application/json:
           schema:
             $ref: schemas/exception.yaml
+    NotFound:
+      description: |-
+        The requested URI was not found.
     ConformanceDeclaration:
       description: |-
         The URIs of all conformance classes supported by the server.
@@ -160,8 +177,8 @@ components:
                 length: ...
             collections:
               - id: pand
-                title: 3D pand #TODO
-                description: the 3d bag pand layer #TODO
+                title: 3D pand # TODO: give title
+                description: the 3d bag pand layer # TODO: describe
                 extent:
                   spatial:
                     bbox:
@@ -199,3 +216,43 @@ components:
                     rel: items
                     type: application/city+json
                     title: Boom
+    Collection:
+      description: |-
+        Information about the feature collection with id `collectionId`.
+      content:
+        application/json:
+          schema:
+            $ref: schemas/collection.yaml
+          example:
+            id: pand
+            title: 3D pand # TODO: give title
+            description: the 3d bag pand layer # TODO: describe
+            extent:
+              spatial:
+                bbox:
+                  - - 10000
+                    - 306250
+                    - 287760
+                    - 623690
+                crs: https://www.opengis.net/def/crs/EPSG/0/7415
+              temporal:
+                interval:
+                  - null
+                  - '2019-12-31T24:59:59Z' # TODO: '2019' is the max bouwjaar in the BAG. I just added the rest, because a timestamp is required. Not sure if we should reference the BAG dates or the AHN dates.
+            itemType: feature
+            crs:
+              - https://www.opengis.net/def/crs/EPSG/0/7415
+            links:
+              - href: https://data.3dbag.nl/api/3dbagplus/collections/pand
+                rel: items
+                type: application/city+json
+                title: Pand
+              # TODO: add license
+              - href: https://creativecommons.org/licenses/by/4.0/
+                rel: license
+                type: text/html
+                title: CC BY 4.0
+              - href: https://creativecommons.org/licenses/by/4.0/rdf
+                rel: license
+                type: application/rdf+xml
+                title: CC BY 4.0
