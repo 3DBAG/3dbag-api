@@ -29,7 +29,7 @@ info:
     url: https://3dgi.nl/img/Logo-02.png
 servers:
   - url: https://data.3dbag.nl/api/3dbagplus
-    description: 3D BAG plus server
+    description: 3D BAG plus production server
 tags:
   - name: Capabilities
     description: |-
@@ -37,6 +37,7 @@ tags:
   - name: Data
     description: |-
       access to data (features)
+
 paths:
   '/':
     get:
@@ -66,63 +67,19 @@ paths:
           $ref: '#/components/responses/ConformanceDeclaration'
         '500':
           $ref: '#/components/responses/ServerError'
+  '/collections':
+    get:
+      tags:
+        - Capabilities
+      summary: the feature collections in the data set
+      operationId: getCollections
+      responses:
+        '200':
+          $ref: '#/components/responses/Collections'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
 components:
-  schemas:
-    link:
-      type: object
-      required:
-        - href
-        - rel
-      properties:
-        href:
-          type: string
-          example: https://data.3dbag.nl/api/3dbagplus/collections/pand/items/0851100000000564/0851100000000564-0
-        rel:
-          type: string
-          example: alternate
-        type:
-          type: string
-          example: application/city+json
-        hreflang:
-          type: string
-          example: en
-        title:
-          type: string
-          example: Spui 70, 2511 BT Den Haag
-        length:
-          type: integer
-    landingPage:
-      type: object
-      required:
-        - links
-      properties:
-        title:
-          type: string
-        description:
-          type: string
-        links:
-          type: array
-          items:
-            $ref: '#/components/schemas/link'
-    exception:
-      type: object
-      required:
-        - code
-      properties:
-        code:
-          type: string
-        description:
-          type: string
-    confClasses:
-      type: object
-      required:
-        - conformsTo
-      properties:
-        conformsTo:
-          type: array
-          items:
-            type: string
   responses:
     LandingPage:
       description: |-
@@ -135,7 +92,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/landingPage'
+            $ref: schemas/landingPage.yaml
           example:
             title: 3D BAG plus
             description: TODO data set description.
@@ -166,16 +123,79 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/exception'
+            $ref: schemas/exception.yaml
     ConformanceDeclaration:
       description: |-
         The URIs of all conformance classes supported by the server.
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/confClasses'
+            $ref: schemas/confClasses.yaml
           example:
             conformsTo:
               - 'http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core'
               - 'http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30'
               - 'https://www.cityjson.org/specs/1.1.1'
+    Collections:
+      description: |-
+        The feature collections shared by this API.
+  
+        The dataset is organized as one or more feature collections. This resource
+        provides information about and access to the collections.
+      content:
+        application/json:
+          schema:
+            $ref: schemas/collections.yaml
+          example:
+            links:
+              - href: https://data.3dbag.nl/api/3dbagplus/collections.json
+                rel: self
+                type: application/json
+                title: this document
+              # TODO: according to the specs, providing 'alternate' links is required (eg. text/html). But I don't want to support html from the beginning, because it is more work. But I'm not sure if the schema is still valid like this.
+              - href: https://data.3dbag.nl/postgres/3dbag_v210908_fd2cee53.zip #TODO: bulk download link
+                rel: enclosure
+                type: application/...
+                title: Bulk download (PostgreSQL dump)
+                length: ...
+            collections:
+              - id: pand
+                title: 3D pand #TODO
+                description: the 3d bag pand layer #TODO
+                extent:
+                  spatial:
+                    bbox:
+                      - - 10000
+                        - 306250
+                        - 287760
+                        - 623690
+                    crs: https://www.opengis.net/def/crs/EPSG/0/7415
+                  temporal:
+                    interval:
+                      - null
+                      - '2019-12-31T24:59:59Z' # TODO: '2019' is the max bouwjaar in the BAG. I just added the rest, because a timestamp is required. Not sure if we should reference the BAG dates or the AHN dates.
+                itemType: feature
+                crs:
+                  - https://www.opengis.net/def/crs/EPSG/0/7415
+                links:
+                  - href: https://data.3dbag.nl/api/3dbagplus/collections/pand
+                    rel: items
+                    type: application/city+json
+                    title: Pand
+                  # TODO: add license
+                  - href: https://creativecommons.org/licenses/by/4.0/
+                    rel: license
+                    type: text/html
+                    title: CC BY 4.0
+                  - href: https://creativecommons.org/licenses/by/4.0/rdf
+                    rel: license
+                    type: application/rdf+xml
+                    title: CC BY 4.0
+              - id: boom
+                title: Trees
+                description: Just some placeholder example to show how we could extend the API if new feature collections come in the future.
+                links:
+                  - href: https://data.3dbag.nl/api/3dbagplus/collections/boom
+                    rel: items
+                    type: application/city+json
+                    title: Boom
