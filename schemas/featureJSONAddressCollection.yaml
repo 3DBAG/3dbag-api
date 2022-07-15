@@ -1,0 +1,14 @@
+type: object
+required:
+  - links
+  - addresses
+properties:
+  addresses:
+    type: array
+    items:
+      $ref: featureJSONAddress.yaml
+  links:
+    type: array
+    items:
+      $ref: link.yaml
+

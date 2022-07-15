@@ -116,12 +116,22 @@ paths:
     get:
       tags:
         - Data
-      summary: fetch a single feature
+      summary: fetch a single 3D BAG feature
       description: |-
-        Fetch a single feature with `featureId` in the `pand` collection.
-      operationId: getFeature
+        Fetches a 3D BAG object/feature in CityJSONFeatures format.
+        The feature includes all Levels of Detail.
+        Filtering on LoD is just proposed, not implemented yet.
       parameters:
-        - $ref: parameters/featureId.yaml
+        - name: LoD
+          in: query
+          required: false
+          description: Level of Detail
+          schema:
+            type: string
+            enum:
+              - '1.2'
+              - '1.3'
+              - '2.2'
       responses:
         '200':
           $ref: '#/components/responses/Feature'
@@ -131,6 +141,45 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
+  '/collections/pand/items/{featureId}/addresses':
+    get:
+      tags:
+        - Data
+      summary: fetch the addresses of `featureId`
+      description: |-
+        Fetch the addresses that are located within the building `featureId`.
+      operationId: getFeatureAddresses
+      parameters:
+        - $ref: parameters/featureId.yaml
+      responses:
+        '200':
+          $ref: '#/components/responses/FeatureAddresses'
+        '400':
+          $ref: '#/components/responses/InvalidParameter'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  '/collections/pand/items/{featureId}/surfaces':
+    get:
+      tags:
+        - Data
+      summary: fetch a single feature
+      description: |-
+        Fetch information about the surfaces of `featureId`.
+      operationId: getFeatureSurfaces
+      parameters:
+        - $ref: parameters/featureId.yaml
+      responses:
+        '200':
+          $ref: '#/components/responses/FeatureSurfaces'
+        '400':
+          $ref: '#/components/responses/InvalidParameter'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 
 components:
   responses:
@@ -327,8 +376,22 @@ components:
             $ref: schemas/featureCollection.yaml # TODO featureCollection schema
     Feature:
       description: |-
-        Fetch a single feature with id `featureId` in the feature collection `pand`.
+        Fetch a single feature with id `featureId` in *CityJSONFeature* format.
+      content:
+        application/city+json:
+          schema:
+            $ref: https://www.cityjson.org # TODO: add cityjsonfeature schema
+    FeatureSurfaces:
+      description: |-
+        Fetch information about the surfaces of the feature with id `featureId`.
       content:
         application/json:
           schema:
-            $ref: schemas/featureJSON.yaml
+            $ref: schemas/featureJSONSurfaces.yaml
+    FeatureAddresses:
+      description: |-
+        Fetch the addresses related to the feature with id `featureId`.
+      content:
+        application/json:
+          schema:
+            $ref: schemas/featureJSONAddressCollection.yaml
