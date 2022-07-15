@@ -180,7 +180,6 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-
 components:
   responses:
     LandingPage:
@@ -377,10 +376,12 @@ components:
     Feature:
       description: |-
         Fetch a single feature with id `featureId` in *CityJSONFeature* format.
+        
+        Feature hierarchy is represented by by the link relations `child` and `parent`.
       content:
         application/city+json:
           schema:
-            $ref: https://www.cityjson.org # TODO: add cityjsonfeature schema
+            $ref: schemas/featureCityJSON.yaml
     FeatureSurfaces:
       description: |-
         Fetch information about the surfaces of the feature with id `featureId`.
