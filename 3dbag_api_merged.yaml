@@ -100,9 +100,9 @@ paths:
         Fetch features of the feature collection with id `pand`.
       operationId: getFeatures
       parameters:
-        - $ref: parameters/limit.yaml
-        - $ref: parameters/bbox.yaml
-        - $ref: parameters/bbox-crs.yaml
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/bbox'
+        - $ref: '#/components/parameters/bbox-crs'
       responses:
         '200':
           $ref: '#/components/responses/Features'
@@ -122,7 +122,7 @@ paths:
         The feature includes all Levels of Detail.
         Filtering on LoD is just proposed, not implemented yet.
       parameters:
-        - $ref: parameters/featureId.yaml
+        - $ref: '#/components/parameters/featureId'
         - name: LoD
           in: query
           required: false
@@ -151,7 +151,7 @@ paths:
         Fetch the addresses that are located within the building `featureId`.
       operationId: getFeatureAddresses
       parameters:
-        - $ref: parameters/featureId.yaml
+        - $ref: '#/components/parameters/featureId'
       responses:
         '200':
           $ref: '#/components/responses/FeatureAddresses'
@@ -170,7 +170,7 @@ paths:
         Fetch information about the surfaces of `featureId`.
       operationId: getFeatureSurfaces
       parameters:
-        - $ref: parameters/featureId.yaml
+        - $ref: '#/components/parameters/featureId'
       responses:
         '200':
           $ref: '#/components/responses/FeatureSurfaces'
@@ -182,6 +182,295 @@ paths:
           $ref: '#/components/responses/ServerError'
 
 components:
+  parameters: 
+    bbox:
+      name: bbox
+      in: query
+      description: |-
+        Only features that have a geometry that intersects the bounding box are selected.
+        The bounding box is provided as four numbers:
+
+        * Lower left corner, coordinate axis 1 (min. x)
+        * Lower left corner, coordinate axis 2 (min. y)
+        * Upper right corner, coordinate axis 1 (max. x)
+        * Upper right corner, coordinate axis 2 (max. y)
+
+        The default coordinate reference system is Amersfoort / RD New, EPSG:28992
+        (https://www.opengis.net/def/crs/EPSG/0/28992).
+        Currently only `https://www.opengis.net/def/crs/EPSG/0/28992` is supported as `bbox-crs`.
+      required: false
+      schema:
+        type: array
+        oneOf:
+          - minItems: 4
+            maxItems: 4
+        items:
+          type: number
+      style: form
+      explode: false
+    bbox-crs:
+      name: bbox-crs
+      description: |-
+        Asserts the CRS used for the coordinate values of the bbox parameter. 
+        The default is Amersfoort / RD New, EPSG:28992
+        (https://www.opengis.net/def/crs/EPSG/0/28992) for a value with 4 numbers.
+        Currently only `https://www.opengis.net/def/crs/EPSG/0/28992` is supported as `bbox-crs`.
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uri
+      style: form
+      explode: false
+    featureId:
+      name: featureId
+      in: path
+      description: local identifier of a feature
+      required: true
+      schema:
+        type: string
+    limit:
+      name: limit
+      in: query
+      description: |-
+        The optional limit parameter limits the number of items that are presented in the response document.
+
+        Only items are counted that are on the first level of the collection in the response document.
+        Nested objects contained within the explicitly requested items shall not be counted.
+
+        Minimum = 1. Maximum = 10000. Default = 10.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 10000
+        default: 10
+      style: form
+      explode: false
+  schemas: 
+    collection:
+      type: object
+      required:
+        - id
+        - links
+      properties:
+        id:
+          description: identifier of the collection used, for example, in URIs
+          type: string
+          example: address
+        title:
+          description: human readable title of the collection
+          type: string
+          example: address
+        description:
+          description: a description of the features in the collection
+          type: string
+          example: An address.
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+          example:
+            - href: http://data.example.com/buildings
+              rel: item
+            - href: http://example.com/concepts/buildings.html
+              rel: describedby
+              type: text/html
+        extent:
+          $ref: extent.yaml
+        itemType:
+          description: indicator about the type of the items in the collection (the default value is 'feature').
+          type: string
+          default: feature
+        crs:
+          description: the list of coordinate reference systems supported by the service
+          type: array
+          items:
+            type: string
+          default:
+            - http://www.opengis.net/def/crs/OGC/1.3/CRS84
+          example:
+            - http://www.opengis.net/def/crs/OGC/1.3/CRS84
+            - http://www.opengis.net/def/crs/EPSG/0/4326
+    collections:
+      type: object
+      required:
+        - links
+        - collections
+      properties:
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+        collections:
+          type: array
+          items:
+            $ref: '#/components/schemas/collection'
+    confClasses:
+      type: object
+      required:
+        - conformsTo
+      properties:
+        conformsTo:
+          type: array
+          items:
+            type: string
+            example: "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core"
+    exception:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+    featureCityJSON:
+      type: object
+      properties:
+        cityjsonfeature:
+          $ref: https://3d.bk.tudelft.nl/schemas/cityjson/1.1.1/cityjsonfeature.schema.json
+        id:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+    featureJSONAddress:
+      type: object
+      required:
+        - type
+        - properties
+      properties:
+        gebruiksdoel:
+          type: array
+          items:
+            type: string
+        gebruiksvloeroppervlakte:
+          type: number
+        postcode:
+          type: string
+        huisnummer:
+          type: integer
+          format: int32
+        huisletter:
+          type: string
+        huisnummertoevoeging:
+          type: string
+        opr_naam:
+          type: string
+        opr_type:
+          type: string
+        wpl_naam:
+          type: string
+        na_postcode:
+          type: string
+        na_huisnummer:
+          type: integer
+          format: int32
+        na_huisletter:
+          type: string
+        na_huisnummertoevoeging:
+          type: string
+        na_opr_naam:
+          type: string
+        tile:
+          type: string
+        id: 
+          type: string
+        id_pand: 
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+    featureJSONAddressCollection:
+      type: object
+      required:
+        - links
+        - addresses
+      properties:
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/featureJSONAddress'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+    featureJSONSurfaces:
+      type: object
+      required:
+        - type
+        - properties
+      properties:
+        area_ground:
+          type: number
+          description: 'Area of the ground surface of the building model. Unit: m2'
+        area_roof_flat:
+          type: number
+        area_roof_sloped:
+          type: number
+        area_shared_wall:
+          type: number
+        area_exterior_wall:
+          type: number
+        identificatie:
+          $ref: '#/components/parameters/featureId'
+        oorspronkelijkbouwjaar:
+          type: string
+        pw_actueel:
+          type: boolean
+        status:
+          type: string
+        oppervlakte_bag_geometrie:
+          type: number
+        tile:
+          type: string
+        id:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+    landingPage:
+      type: object
+      required:
+        - links
+      properties:
+        title:
+          type: string
+          example: Buildings in Bonn
+        description:
+          type: string
+          example: Access to data about buildings in the city of Bonn via a Web API that conforms to the OGC API Features specification.
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+    link:
+      type: object
+      required:
+        - href
+        - rel
+      properties:
+        href:
+          type: string
+          example: https://data.3dbag.nl/api/3dbagplus/collections/pand/items/0851100000000564/0851100000000564-0
+        rel:
+          type: string
+          example: alternate
+        type:
+          type: string
+          example: application/city+json
+        hreflang:
+          type: string
+          example: en
+        title:
+          type: string
+          example: Spui 70, 2511 BT Den Haag
+        length:
+          type: integer
   responses:
     LandingPage:
       description: |-
@@ -194,7 +483,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: schemas/landingPage.yaml
+            $ref: '#/components/schemas/landingPage'
           example:
             title: 3D BAG plus
             description: TODO data set description.
@@ -225,7 +514,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: schemas/exception.yaml
+            $ref: '#/components/schemas/exception'
     NotFound:
       description: |-
         The requested URI was not found.
@@ -235,14 +524,14 @@ components:
       content:
         application/json:
           schema:
-            $ref: schemas/exception.yaml
+            $ref: '#/components/schemas/exception'
     ConformanceDeclaration:
       description: |-
         The URIs of all conformance classes supported by the server.
       content:
         application/json:
           schema:
-            $ref: schemas/confClasses.yaml
+            $ref: '#/components/schemas/confClasses'
           example:
             conformsTo:
               - 'http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core'
@@ -257,7 +546,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: schemas/collections.yaml
+            $ref: '#/components/schemas/collections'
           example:
             links:
               - href: https://data.3dbag.nl/api/3dbagplus/collections.json
@@ -317,7 +606,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: schemas/collection.yaml
+            $ref: '#/components/schemas/collection'
           example:
             id: pand
             title: 3D pand # TODO: give title
@@ -382,18 +671,18 @@ components:
       content:
         application/city+json:
           schema:
-            $ref: schemas/featureCityJSON.yaml
+            $ref: '#/components/schemas/featureCityJSON'
     FeatureSurfaces:
       description: |-
         Fetch information about the surfaces of the feature with id `featureId`.
       content:
         application/json:
           schema:
-            $ref: schemas/featureJSONSurfaces.yaml
+            $ref: '#/components/schemas/featureJSONSurfaces'
     FeatureAddresses:
       description: |-
         Fetch the addresses related to the feature with id `featureId`.
       content:
         application/json:
           schema:
-            $ref: schemas/featureJSONAddressCollection.yaml
+            $ref: '#/components/schemas/featureJSONAddressCollection'

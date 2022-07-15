@@ -37,9 +37,11 @@ properties:
     type: string
   tile:
     type: string
-id: string
-id_pand: string
-links:
-  type: array
-  items:
-    $ref: link.yaml
+  id:
+    type: string
+  id_pand:
+    type: string
+  links:
+    type: array
+    items:
+      $ref: link.yaml

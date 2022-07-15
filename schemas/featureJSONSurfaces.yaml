@@ -26,9 +26,10 @@ properties:
     type: number
   tile:
     type: string
-id: string
-links:
-  type: array
-  items:
-    $ref: link.yaml
+  id:
+    type: string
+  links:
+    type: array
+    items:
+      $ref: link.yaml
 
