@@ -1,0 +1,24 @@
+name: bbox
+in: query
+description: |-
+  Only features that have a geometry that intersects the bounding box are selected.
+  The bounding box is provided as four numbers:
+
+  * Lower left corner, coordinate axis 1 (min. x)
+  * Lower left corner, coordinate axis 2 (min. y)
+  * Upper right corner, coordinate axis 1 (max. x)
+  * Upper right corner, coordinate axis 2 (max. y)
+
+  The default coordinate reference system is Amersfoort / RD New, EPSG:28992
+  (https://www.opengis.net/def/crs/EPSG/0/28992).
+  Currently only `https://www.opengis.net/def/crs/EPSG/0/28992` is supported as `bbox-crs`.
+required: false
+schema:
+  type: array
+  oneOf:
+  - minItems: 4
+    maxItems: 4
+  items:
+    type: number
+style: form
+explode: false

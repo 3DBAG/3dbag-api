@@ -91,7 +91,27 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
-
+  '/collections/pand/items':
+    get:
+      tags:
+        - Data
+      summary: fetch pand features
+      description: |-
+        Fetch features of the feature collection with id `pand`.
+      operationId: getFeatures
+      parameters:
+        - $ref: parameters/limit.yaml
+        - $ref: parameters/bbox.yaml
+        - $ref: parameters/bbox-crs.yaml
+      responses:
+        '200':
+          $ref: '#/components/responses/Features'
+        '400':
+          $ref: '#/components/responses/InvalidParameter'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
 components:
   responses:
@@ -141,6 +161,13 @@ components:
     NotFound:
       description: |-
         The requested URI was not found.
+    InvalidParameter:
+      description: |-
+        A query parameter has an invalid value.
+      content:
+        application/json:
+          schema:
+            $ref: schemas/exception.yaml
     ConformanceDeclaration:
       description: |-
         The URIs of all conformance classes supported by the server.
@@ -256,3 +283,26 @@ components:
                 rel: license
                 type: application/rdf+xml
                 title: CC BY 4.0
+    Features:
+      description: |-
+        The response is a document consisting of features in the collection.
+        The features included in the response are determined by the server
+        based on the query parameters of the request. To support access to
+        larger collections without overloading the client, the API supports
+        paged access with links to the next page, if more features are selected
+        that the page size.
+        
+        The `bbox` parameter can be used to select only a
+        subset of the features in the collection (the features that are in the
+        bounding box). The `bbox` parameter matches all features
+        in the collection that are not associated with a location, too.
+
+        The `limit` parameter may be used to control the subset of the
+        selected features that should be returned in the response, the page size.
+        Each page includes information about the number of selected and
+        returned features (`numberMatched` and `numberReturned`) as well as
+        links to support paging (link relation `next`).
+      content:
+        application/json:
+          schema:
+            $ref: schemas/featureCollection.yaml # TODO featureCollection schema
