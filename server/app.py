@@ -1,6 +1,11 @@
-from flask import Flask, jsonify
+import logging
+
+from flask import Flask, jsonify, abort, Response
+
+from server import parser
 
 app = Flask(__name__)
+feature_idx = parser.feature_index()
 
 @app.get('/')
 def landing_page():
@@ -42,7 +47,20 @@ def get_addresses(featureId):
 @app.get('/collections/pand/items/<featureId>/surfaces')
 def get_surfaces(featureId):
     print(f"requesting {featureId} surfaces")
-    raise NotImplementedError
+    # Get the ID of the parent feature if it is a BuildinPart,
+    # like NL.IMBAG.Pand.1655100000488643-0, because the feature_index only
+    # contains the parent IDs.
+    parent_id = featureId.rsplit("-")
+    csv_path = parser.find_surfaces_csv_path(parent_id[0], feature_idx)
+    if csv_path is None:
+        logging.debug(f"featureId {parent_id[0]} not found in feature_index")
+        abort(400)
+    try:
+        surfaces_gen = parser.parse_surfaces_csv(csv_path)
+        return parser.get_feature_surfaces(featureId, surfaces_gen)
+    except BaseException as e:
+        logging.exception(e)
+        abort(500)
 
 
 if __name__ == '__main__':
