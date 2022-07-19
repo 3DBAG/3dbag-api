@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 import json
 
-from flask import Flask, jsonify, abort, request, url_for
+from flask import Flask, render_template, abort, request, url_for, send_from_directory
 
 from server import parser
 
@@ -14,22 +14,139 @@ FEATURE_IDX = parser.feature_index()
 
 @app.get('/')
 def landing_page():
-    return jsonify({"hello": "world"})
+    return {
+        "title": "3D BAG plus",
+        "description": "3D BAG plus is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.",
+        "links": [
+            {
+                "href": request.url,
+                "rel": "self",
+                "type": "application/json",
+                "title": "this document"
+            },
+            {
+                "href": url_for("api", _external=True),
+                "rel": "service-desc",
+                "type": "application/vnd.oai.openapi+json;version=3.0",
+                "title": "the API definition"
+            },
+            {
+                "href": url_for("api_html", _external=True),
+                "rel": "service-doc",
+                "type": "text/html",
+                "title": "the API documentation"
+            },
+            {
+                "href": url_for("conformance", _external=True),
+                "rel": "conformance",
+                "type": "application/json",
+                "title": "OGC API conformance classes implemented by this server"
+            },
+            {
+                "href": url_for("collections", _external=True),
+                "rel": "collections",
+                "type": "data",
+                "title": "Information about the feature collections"
+            },
+        ]
+    }
+
+
+@app.get('/api')
+def api():
+    # TODO: need to send JSON instead of YAML
+    return send_from_directory(Path(app.root_path).parent, '3dbag_api_merged.yaml')
+
+
+@app.get('/api.html')
+def api_html():
+    return render_template("swagger_ui.html")
 
 
 @app.get('/conformance')
 def conformance():
-    raise NotImplementedError
+    return {
+        "conformsTo": [
+            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+            "https://www.cityjson.org/specs/1.1.1"
+        ]
+    }
 
 
 @app.get('/collections')
 def collections():
-    raise NotImplementedError
+    return {
+        "collections": [
+            pand(),
+        ],
+        "links": [
+            {
+                "href": url_for("collections", _external=True),
+                "rel": "self",
+                "type": "application/json",
+                "title": "this document"
+            },
+        ]
+    }
 
 
 @app.get('/collections/pand')
 def pand():
-    raise NotImplementedError
+    return {
+        "id": "pand",
+        "title": "3D pand",
+        "description": "the 3d bag pand layer",
+        "extent": {
+            "spatial": {
+                "bbox": [
+                    [
+                        10000,
+                        306250,
+                        287760,
+                        623690
+                    ]
+                ],
+                "crs": "https://www.opengis.net/def/crs/EPSG/0/7415"
+            },
+            "temporal": {
+                "interval": [
+                    None,
+                    "2019-12-31T24:59:59Z"
+                ]
+            }
+        },
+        "itemType": "feature",
+        "crs": [
+            "https://www.opengis.net/def/crs/EPSG/0/7415"
+        ],
+        "links": [
+            {
+                "href": url_for("pand", _external=True),
+                "rel": "self",
+                "type": "application/json",
+                "title": "this document"
+            },
+            {
+                "href": url_for("pand_items", _external=True),
+                "rel": "items",
+                "type": "application/city+json",
+                "title": "Pand items"
+            },
+            {
+                "href": "https://creativecommons.org/licenses/by/4.0/",
+                "rel": "license",
+                "type": "text/html",
+                "title": "CC BY 4.0"
+            },
+            {
+                "href": "https://creativecommons.org/licenses/by/4.0/rdf",
+                "rel": "license",
+                "type": "application/rdf+xml",
+                "title": "CC BY 4.0"
+            }
+        ]
+    }
 
 
 @app.get('/collections/pand/items')
