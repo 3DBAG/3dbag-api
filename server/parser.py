@@ -10,32 +10,25 @@ def feature_index():
         return dict((d["identificatie"], d["tile_id"]) for d in json.load(fo))
 
 
-def find_surfaces_csv_path(featureId, feature_index):
-    """Return the file path of the CSV file containing the surfaces record for
-    feature with featureId.
+def find_surfaces_csv_path(tile_id):
+    """Return the file path of the CSV file containing the surfaces record for tile_id.
 
     :returns: Absolute path to CSV file.
     """
     base = Path("/data/3DBAGplus").resolve()
-    try:
-        tile_id = feature_index[featureId]
-        return base.joinpath(f"{tile_id}_lod2_surface_areas.csv")
-    except KeyError:
-        return None
-
+    return base.joinpath(f"{tile_id}_lod2_surface_areas.csv")
 
 
 def parse_surfaces_csv(path: Path):
     """Parse a CSV file containing the surfaces data.
 
-    :returns: A collection with the surfaces data.
+    :returns: A generator over the surfaces data.
     """
     if not path.exists:
         raise FileNotFoundError
     with path.open("r") as fo:
         for row in csv.DictReader(fo):
             yield row["id"], row
-
 
 
 def get_feature_surfaces(featureId, surfaces_gen):
