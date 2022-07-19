@@ -16,6 +16,6 @@ def test_parse_surfaces_csv():
 def test_get_feature_surfaces():
     p = Path("/data/3DBAGplus/997_lod2_surface_areas.csv")
     surfaces_gen = parse_surfaces_csv(p)
-    rec = get_feature_surfaces("NL.IMBAG.Pand.1655100000488643-0", surfaces_gen)
+    rec = get_feature_record("NL.IMBAG.Pand.1655100000488643-0", surfaces_gen)
     pprint(rec)
 

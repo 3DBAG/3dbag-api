@@ -1,6 +1,7 @@
 name: featureId
 in: path
-description: local identifier of a feature
+description: 3D BAG [`identificatie`](https://docs.3dbag.nl/en/schema/attributes/#identificatie)
+example: NL.IMBAG.Pand.0851100000000564-0
 required: true
 schema:
   type: string
