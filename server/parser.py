@@ -43,6 +43,11 @@ def find_addresses_csv_path(tile_id):
     return base.joinpath(f"{tile_id}_lod2_surface_areas_addr.csv")
 
 
+def find_co_path(featureId, tile_id):
+    base = Path("/data/3DBAGplus").resolve()
+    return base / tile_id / f"{featureId}.json"
+
+
 def parse_surfaces_csv(path: Path):
     """Parse a CSV file containing the surfaces data.
 

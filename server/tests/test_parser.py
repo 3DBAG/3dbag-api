@@ -19,3 +19,8 @@ def test_get_feature_surfaces():
     rec = get_feature_record("NL.IMBAG.Pand.1655100000488643-0", surfaces_gen)
     pprint(rec)
 
+
+def test_find_co_path():
+    res = find_co_path("NL.IMBAG.Pand.1655100000548671", "997")
+    print(res)
+
