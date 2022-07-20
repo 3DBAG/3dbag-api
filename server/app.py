@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 import json
+from copy import deepcopy
 
 from flask import (Flask, render_template, abort, request, url_for, jsonify,
                    send_from_directory)
@@ -10,14 +11,32 @@ from server import parser
 
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
-FEATURE_IDX = parser.feature_index()
+FEATURE_IDX = parser.feature_index() # feature index of (featureId : tile_id)
+FEATURE_IDS = list(FEATURE_IDX.keys()) # featureID list
 
 
-def get_paginated_features(results, url, offset, limit):
+def load_cityjsonfeature(featureId):
+    """Loads a single feature."""
+    parent_id = parser.get_parent_id(featureId)
+    tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
+    if tile_id is None:
+        logging.debug(f"featureId {parent_id} not found in feature_index")
+        abort(404)
+
+    json_path = parser.find_co_path(parent_id, tile_id)
+    if not json_path.exists():
+        logging.debug(f"CityJSON file {json_path} not found ")
+        abort(404)
+    else:
+        with json_path.open("r") as fo:
+            return json.load(fo, encoding='utf-8-sig')
+
+
+def get_paginated_features(features, url, offset, limit):
     """From https://stackoverflow.com/a/55546722"""
     offset = int(offset)
     limit = int(limit)
-    nr_matched = len(results)
+    nr_matched = len(features)
     if nr_matched < offset or limit < 0:
         abort(404)
     # make response
@@ -48,10 +67,10 @@ def get_paginated_features(results, url, offset, limit):
             "type": "application/city+json",
         })
     obj["links"] = links
-    # get results according to bounds
-    res = results[(offset - 1):(offset - 1 + limit)]
+    # get features according to bounds
+    res = features[(offset - 1):(offset - 1 + limit)]
     obj["numberReturned"] = len(res)
-    obj["features"] = res
+    obj["features"] = [load_cityjsonfeature(featureId) for featureId in res]
     return obj
 
 
@@ -194,8 +213,8 @@ def pand():
 
 @app.get('/collections/pand/items')
 def pand_items():
-    features = [{"a_id": 1 + i} for i in range(50)]
-    return jsonify(get_paginated_features(features, url_for("pand_items", _external=True),
+    return jsonify(get_paginated_features(FEATURE_IDS,
+                                          url_for("pand_items", _external=True),
                                           offset=request.args.get("offset", 1),
                                           limit=request.args.get("limit", 10)))
 
@@ -203,19 +222,7 @@ def pand_items():
 @app.get('/collections/pand/items/<featureId>')
 def get_feature(featureId):
     logging.debug(f"requesting {featureId}")
-    parent_id = parser.get_parent_id(featureId)
-    tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
-    if tile_id is None:
-        logging.debug(f"featureId {parent_id} not found in feature_index")
-        abort(404)
-
-    json_path = parser.find_co_path(parent_id, tile_id)
-    if not json_path.exists():
-        logging.debug(f"CityJSON file {json_path} not found ")
-        abort(404)
-    else:
-        with json_path.open("r") as fo:
-            cityjsonfeature = json.load(fo, encoding='utf-8-sig')
+    cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
         {

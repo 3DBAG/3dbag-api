@@ -1,3 +1,7 @@
+from pprint import pprint
+
+from ..app import *
+
 def test_landing_page(client):
     response = client.get("/")
     assert response.get_json()["hello"] == "world"
@@ -22,3 +26,8 @@ def test_collections_pand_addresses(client):
 
 def test_collections_pand_surfaces(client):
     response = client.get("/collections/pand/items/0851100000000564/surfaces")
+
+def test_load_cityjsonfeature():
+    featureId = "NL.IMBAG.Pand.1655100000548444"
+    promise = load_cityjsonfeature(featureId)
+    pprint(promise)
