@@ -373,7 +373,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: schemas/featureCollection.yaml # TODO featureCollection schema
+            $ref: schemas/featureCollection.yaml
     Feature:
       description: |-
         Fetch a single feature with id `featureId` in *CityJSONFeature* format.

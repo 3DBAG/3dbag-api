@@ -472,6 +472,33 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/link'
+    featureCollection:
+      type: object
+      required:
+        - type
+        - features
+      properties:
+        type:
+          type: string
+          enum:
+            - FeatureCollection
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/featureCityJSON'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+        timeStamp:
+          type: string
+          format: date-time
+        numberMatched:
+          type: integer
+          minimum: 0
+        numberReturned:
+          type: integer
+          minimum: 0
     featureJSONAddress:
       type: object
       required:
@@ -798,7 +825,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: schemas/featureCollection.yaml # TODO featureCollection schema
+            $ref: '#/components/schemas/featureCollection'
     Feature:
       description: |-
         Fetch a single feature with id `featureId` in *CityJSONFeature* format.
