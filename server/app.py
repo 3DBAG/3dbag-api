@@ -2,7 +2,8 @@ import logging
 from pathlib import Path
 import json
 
-from flask import Flask, render_template, abort, request, url_for, send_from_directory
+from flask import (Flask, render_template, abort, request, url_for, jsonify,
+                   send_from_directory)
 
 from server import parser
 
@@ -10,6 +11,48 @@ from server import parser
 logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 FEATURE_IDX = parser.feature_index()
+
+
+def get_paginated_features(results, url, offset, limit):
+    """From https://stackoverflow.com/a/55546722"""
+    offset = int(offset)
+    limit = int(limit)
+    nr_matched = len(results)
+    if nr_matched < offset or limit < 0:
+        abort(404)
+    # make response
+    links = []
+    obj = {"numberMatched": nr_matched}
+    # make URLs
+    links.append({
+        "href": request.url,
+        "rel": "self",
+        "type": "application/city+json",
+        "title": "this document"
+    })
+    # make previous URL
+    if offset > 1:
+        offset_copy = max(1, offset - limit)
+        limit_copy = offset - 1
+        links.append({
+            "href": f"{url}?offset={offset_copy:d}&limit={limit_copy:d}",
+            "rel": "prev",
+            "type": "application/city+json",
+        })
+    # make next URL
+    if offset + limit < nr_matched:
+        offset_copy = offset + limit
+        links.append({
+            "href": f"{url}?offset={offset_copy:d}&limit={limit:d}",
+            "rel": "next",
+            "type": "application/city+json",
+        })
+    obj["links"] = links
+    # get results according to bounds
+    res = results[(offset - 1):(offset - 1 + limit)]
+    obj["numberReturned"] = len(res)
+    obj["features"] = res
+    return obj
 
 
 @app.get('/')
@@ -151,7 +194,10 @@ def pand():
 
 @app.get('/collections/pand/items')
 def pand_items():
-    raise NotImplementedError
+    features = [{"a_id": 1 + i} for i in range(50)]
+    return jsonify(get_paginated_features(features, url_for("pand_items", _external=True),
+                                          offset=request.args.get("offset", 1),
+                                          limit=request.args.get("limit", 10)))
 
 
 @app.get('/collections/pand/items/<featureId>')
