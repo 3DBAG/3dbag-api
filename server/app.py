@@ -1,18 +1,22 @@
 import logging
 from pathlib import Path
 import json
-from copy import deepcopy
 
 from flask import (Flask, render_template, abort, request, url_for, jsonify,
                    send_from_directory)
 
-from server import parser
+
+from server import parser, index, db
 
 
 logging.basicConfig(level=logging.DEBUG)
-app = Flask(__name__)
 FEATURE_IDX = parser.feature_index() # feature index of (featureId : tile_id)
 FEATURE_IDS = list(FEATURE_IDX.keys()) # featureID list
+tiles_json = "/data/3DBAGplus/bag_tiles_3k.geojson"
+TILES_SHAPELY= index.read_tiles_to_shapely(tiles_json)
+TILES_RTREE = index.tiles_rtree(TILES_SHAPELY)
+DBFILE = "/data/3DBAGplus/bag_centroid_index.gpkg"
+app = Flask(__name__)
 
 
 def load_cityjsonfeature(featureId):
@@ -213,7 +217,25 @@ def pand():
 
 @app.get('/collections/pand/items')
 def pand_items():
-    return jsonify(get_paginated_features(FEATURE_IDS,
+    re_bbox = request.args.get("bbox", None)
+    if re_bbox is not None:
+        r = re_bbox.split(',')
+        if len(r) != 4:
+            abort(400)
+        try:
+            bbox = list(map(float, r))
+        except TypeError as e:
+            logging.debug(e)
+            abort(400)
+        # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
+        logging.debug(f"query with bbox {bbox}")
+        conn = db.Db(dbfile=DBFILE)
+        feature_subset = index.features_in_bbox(conn, bbox)
+        conn.conn.close()
+    else:
+        feature_subset = FEATURE_IDS
+    print(feature_subset)
+    return jsonify(get_paginated_features(feature_subset,
                                           url_for("pand_items", _external=True),
                                           offset=request.args.get("offset", 1),
                                           limit=request.args.get("limit", 10)))
