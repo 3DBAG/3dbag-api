@@ -78,8 +78,6 @@ def parse_addresses_csv(path: Path):
 
 def get_feature_record(featureId, record_gen):
     """Get the record of the feature with featureId."""
-    parent_id = featureId.rsplit("-")[0]
     for rec_id, rec in record_gen:
-        # FIXME: we need to return all the children of a feature and not jsut the first match
-        if rec_id == featureId or rec_id == parent_id:
+        if rec_id == featureId:
             return rec

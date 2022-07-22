@@ -338,6 +338,10 @@ def get_surfaces(featureId):
         csv_path = parser.find_surfaces_csv_path(app.config["DATA_BASE_DIR"], tile_id)
         surfaces_gen = parser.parse_surfaces_csv(csv_path)
         # FIXME: a bag feature can have multiple childern in the 3d bag, thus we needto  return an array of children
+        # FIXME: we are querying with parent_ids in the api, not with children-ids, how make this work neatly?
+        if featureId.find("-") < 0:
+            # we have a parent_id, but we need a child-id, so let's make one...
+            featureId += "-0"
         surfaces_record = parser.get_feature_record(featureId, surfaces_gen)
     except BaseException as e:
         logging.exception(e)
