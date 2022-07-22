@@ -48,6 +48,11 @@ def find_co_path(featureId, tile_id):
     return base / tile_id / f"{featureId}.json"
 
 
+def find_tile_meta_path(tile_id):
+    base = Path("/data/3DBAGplus").resolve()
+    return base / tile_id / f"meta.json"
+
+
 def parse_surfaces_csv(path: Path):
     """Parse a CSV file containing the surfaces data.
 

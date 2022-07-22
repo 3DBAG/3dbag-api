@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 
 from flask import (Flask, render_template, abort, request, url_for, jsonify,
-                   send_from_directory)
+                   send_from_directory, Response)
 
 
 from server import parser, index, db
@@ -17,6 +17,22 @@ TILES_SHAPELY= index.read_tiles_to_shapely(tiles_json)
 TILES_RTREE = index.tiles_rtree(TILES_SHAPELY)
 DBFILE = "/data/3DBAGplus/bag_centroid_index.gpkg"
 app = Flask(__name__)
+
+
+def load_cityjsonfeature_meta(featureId):
+    parent_id = parser.get_parent_id(featureId)
+    tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
+    if tile_id is None:
+        logging.debug(f"featureId {parent_id} not found in feature_index")
+        abort(404)
+
+    json_path = parser.find_tile_meta_path(tile_id)
+    if not json_path.exists():
+        logging.debug(f"CityJSON metadata file {json_path} not found ")
+        abort(404)
+    else:
+        with json_path.open("r") as fo:
+            return json.load(fo, encoding='utf-8-sig')
 
 
 def load_cityjsonfeature(featureId):
@@ -244,6 +260,7 @@ def pand_items():
 @app.get('/collections/pand/items/<featureId>')
 def get_feature(featureId):
     logging.debug(f"requesting {featureId}")
+    meta = load_cityjsonfeature_meta(featureId)
     cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
@@ -274,6 +291,7 @@ def get_feature(featureId):
     return {
         "id": cityjsonfeature["id"],
         "cityjsonfeature": cityjsonfeature,
+        "metadata": meta,
         "links": links
     }
 
