@@ -1,24 +1,12 @@
 import logging
 from pathlib import Path
 import json
-from sys import getsizeof
 
-from flask import (Flask, render_template, abort, request, url_for, jsonify,
+from flask import (render_template, abort, request, url_for, jsonify,
                    send_from_directory)
 
-from server import parser, index, db
+from app import parser, index, db, app, FEATURE_IDX, FEATURE_IDS
 
-
-logging.basicConfig(level=logging.DEBUG)
-# tiles_json = "/data/3DBAGplus/bag_tiles_3k.geojson"
-# TILES_SHAPELY= index.read_tiles_to_shapely(tiles_json)
-# TILES_RTREE = index.tiles_rtree(TILES_SHAPELY)
-app = Flask(__name__)
-app.config.from_envvar("3DBAGPLUS_SETTINGS")
-logging.debug(f"configuration: {app.config}")
-FEATURE_IDX = parser.feature_index(app.config["FEATURE_INDEX_CSV"]) # feature index of (featureId : tile_id)
-logging.debug(f"memory size of FEATURE_IDX from json: {getsizeof(FEATURE_IDX)} bytes")
-FEATURE_IDS = list(FEATURE_IDX.keys()) # featureID list
 
 def load_cityjsonfeature_meta(featureId):
     parent_id = parser.get_parent_id(featureId)
