@@ -1,5 +1,5 @@
 """Split a CityJSON file into CityJSONFeatures, and write them to separate files."""
-from io import StringIO
+import gzip
 import json
 from pathlib import Path
 
@@ -49,17 +49,20 @@ def co_to_jsonl(cm, theid, idsdone):
 @click.argument('filename', type=click.Path(exists=True))
 @click.argument('outdir', type=click.Path(exists=True))
 def run(filename, outdir):
-    f = click.open_file(filename, mode='r', encoding='utf-8-sig')
-    cm = cjio.cityjson.reader(file=f, ignore_duplicate_keys=True)
+    tile_id = filename.rsplit(".")[0].rsplit("_")[3]
+    with gzip.open(filename, "r") as fo:
+        cm = cjio.cityjson.reader(file=fo, ignore_duplicate_keys=True)
     cm.upgrade_version("1.1", 3)
     meta_json = export2jsonl_meta(cm)
-    with (Path(outdir) / f"meta.json").open("w") as fo:
+    outdir_tile = Path(outdir) / tile_id
+    outdir_tile.mkdir(exist_ok=True)
+    with (outdir_tile / f"meta.json").open("w") as fo:
         fo.write(meta_json)
     idsdone = set()
     for coid in cm.j["CityObjects"]:
         json_str = co_to_jsonl(cm, coid, idsdone)
         if json_str is not None:
-            with (Path(outdir) / f"{coid}.json").open("w") as fo:
+            with (outdir_tile / f"{coid}.json").open("w") as fo:
                 fo.write(json_str)
 
 
