@@ -298,6 +298,7 @@ def get_addresses(featureId):
         csv_path = parser.find_addresses_csv_path(app.config["DATA_BASE_DIR"], tile_id)
         addresses_gen = parser.parse_addresses_csv(csv_path)
         # FIXME: here we need the BAG identifiactie, but for the surfaces records we need the 3D BAG building part identificatie
+        # FIXME: a bag feature can have multiple childern in the 3d bag, thus we needto  return an array of children
         addresses_record = parser.get_feature_record(parent_id, addresses_gen)
     except BaseException as e:
         logging.exception(e)
@@ -336,6 +337,7 @@ def get_surfaces(featureId):
     try:
         csv_path = parser.find_surfaces_csv_path(app.config["DATA_BASE_DIR"], tile_id)
         surfaces_gen = parser.parse_surfaces_csv(csv_path)
+        # FIXME: a bag feature can have multiple childern in the 3d bag, thus we needto  return an array of children
         surfaces_record = parser.get_feature_record(featureId, surfaces_gen)
     except BaseException as e:
         logging.exception(e)
