@@ -18,38 +18,38 @@ def get_tile_id(parent_id, feature_index):
         return None
 
 
-def feature_index():
+def feature_index(feature_index_csv):
     """Returns the feature-tile index of the 3D BAG."""
-    p = "/data/3DBAGplus/bag_index_997.json"
-    with open(p, "r") as fo:
-        return dict((d["identificatie"], d["tile_id"]) for d in json.load(fo))
+    p = Path(feature_index_csv).resolve()
+    with p.open("r") as fo:
+        return dict((row[0], row[1]) for row in csv.reader(fo))
 
 
-def find_surfaces_csv_path(tile_id):
+def find_surfaces_csv_path(data_base_dir, tile_id):
     """Return the file path of the CSV file containing the surfaces record for tile_id.
 
     :returns: Absolute path to CSV file.
     """
-    base = Path("/data/3DBAGplus").resolve()
+    base = Path(data_base_dir).resolve()
     return base.joinpath(f"{tile_id}_lod2_surface_areas.csv")
 
 
-def find_addresses_csv_path(tile_id):
+def find_addresses_csv_path(data_base_dir, tile_id):
     """Return the file path of the CSV file containing the addresses record for tile_id.
 
     :returns: Absolute path to CSV file.
     """
-    base = Path("/data/3DBAGplus").resolve()
+    base = Path(data_base_dir).resolve()
     return base.joinpath(f"{tile_id}_lod2_surface_areas_addr.csv")
 
 
-def find_co_path(featureId, tile_id):
-    base = Path("/data/3DBAGplus").resolve()
+def find_co_path(data_base_dir, featureId, tile_id):
+    base = Path(data_base_dir).resolve()
     return base / tile_id / f"{featureId}.json"
 
 
-def find_tile_meta_path(tile_id):
-    base = Path("/data/3DBAGplus").resolve()
+def find_tile_meta_path(data_base_dir, tile_id):
+    base = Path(data_base_dir).resolve()
     return base / tile_id / f"meta.json"
 
 

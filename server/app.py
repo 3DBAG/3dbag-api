@@ -1,23 +1,24 @@
 import logging
 from pathlib import Path
 import json
+from sys import getsizeof
 
 from flask import (Flask, render_template, abort, request, url_for, jsonify,
-                   send_from_directory, Response)
-
+                   send_from_directory)
 
 from server import parser, index, db
 
 
 logging.basicConfig(level=logging.DEBUG)
-FEATURE_IDX = parser.feature_index() # feature index of (featureId : tile_id)
-FEATURE_IDS = list(FEATURE_IDX.keys()) # featureID list
-tiles_json = "/data/3DBAGplus/bag_tiles_3k.geojson"
-TILES_SHAPELY= index.read_tiles_to_shapely(tiles_json)
-TILES_RTREE = index.tiles_rtree(TILES_SHAPELY)
-DBFILE = "/data/3DBAGplus/bag_centroid_index.gpkg"
+# tiles_json = "/data/3DBAGplus/bag_tiles_3k.geojson"
+# TILES_SHAPELY= index.read_tiles_to_shapely(tiles_json)
+# TILES_RTREE = index.tiles_rtree(TILES_SHAPELY)
 app = Flask(__name__)
-
+app.config.from_envvar("3DBAGPLUS_SETTINGS")
+logging.debug(f"configuration: {app.config}")
+FEATURE_IDX = parser.feature_index(app.config["FEATURE_INDEX_CSV"]) # feature index of (featureId : tile_id)
+logging.debug(f"memory size of FEATURE_IDX from json: {getsizeof(FEATURE_IDX)} bytes")
+FEATURE_IDS = list(FEATURE_IDX.keys()) # featureID list
 
 def load_cityjsonfeature_meta(featureId):
     parent_id = parser.get_parent_id(featureId)
@@ -26,7 +27,7 @@ def load_cityjsonfeature_meta(featureId):
         logging.debug(f"featureId {parent_id} not found in feature_index")
         abort(404)
 
-    json_path = parser.find_tile_meta_path(tile_id)
+    json_path = parser.find_tile_meta_path(app.config["DATA_BASE_DIR"], tile_id)
     if not json_path.exists():
         logging.debug(f"CityJSON metadata file {json_path} not found ")
         abort(404)
@@ -43,7 +44,7 @@ def load_cityjsonfeature(featureId):
         logging.debug(f"featureId {parent_id} not found in feature_index")
         abort(404)
 
-    json_path = parser.find_co_path(parent_id, tile_id)
+    json_path = parser.find_co_path(app.config["DATA_BASE_DIR"], parent_id, tile_id)
     if not json_path.exists():
         logging.debug(f"CityJSON file {json_path} not found ")
         abort(404)
@@ -245,12 +246,11 @@ def pand_items():
             abort(400)
         # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
         logging.debug(f"query with bbox {bbox}")
-        conn = db.Db(dbfile=DBFILE)
+        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
         feature_subset = index.features_in_bbox(conn, bbox)
         conn.conn.close()
     else:
         feature_subset = FEATURE_IDS
-    print(feature_subset)
     return jsonify(get_paginated_features(feature_subset,
                                           url_for("pand_items", _external=True),
                                           offset=request.args.get("offset", 1),
@@ -307,7 +307,7 @@ def get_addresses(featureId):
         abort(404)
 
     try:
-        csv_path = parser.find_addresses_csv_path(tile_id)
+        csv_path = parser.find_addresses_csv_path(app.config["DATA_BASE_DIR"], tile_id)
         addresses_gen = parser.parse_addresses_csv(csv_path)
         # FIXME: here we need the BAG identifiactie, but for the surfaces records we need the 3D BAG building part identificatie
         addresses_record = parser.get_feature_record(parent_id, addresses_gen)
@@ -346,7 +346,7 @@ def get_surfaces(featureId):
         abort(404)
 
     try:
-        csv_path = parser.find_surfaces_csv_path(tile_id)
+        csv_path = parser.find_surfaces_csv_path(app.config["DATA_BASE_DIR"], tile_id)
         surfaces_gen = parser.parse_surfaces_csv(csv_path)
         surfaces_record = parser.get_feature_record(featureId, surfaces_gen)
     except BaseException as e:
