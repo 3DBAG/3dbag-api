@@ -115,8 +115,8 @@ def landing_page():
             },
             {
                 "href": url_for("collections", _external=True),
-                "rel": "collections",
-                "type": "data",
+                "rel": "data",
+                "type": "application/json",
                 "title": "Information about the feature collections"
             },
         ]
