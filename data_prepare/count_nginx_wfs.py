@@ -19,7 +19,11 @@ def reduce_nginx_wfs(logfile):
                 # we exclude the queries to the tile index
                 if regex_tiles.search(line) is None:
                     date_str = regex_date.search(line)[0]
-                    date_new = datetime.strptime(date_str, "%d/%b/%Y:%H:%M:%S +0200")
+                    try:
+                        date_new = datetime.strptime(date_str, "%d/%b/%Y:%H:%M:%S +0200")
+                    except ValueError:
+                        date_new = datetime.strptime(date_str,
+                                                     "%d/%b/%Y:%H:%M:%S +0100")
                     if date_current is not None:
                         if date_new.strftime("%Y-%m") == date_current.strftime("%Y-%m"):
                             sum_current += 1
