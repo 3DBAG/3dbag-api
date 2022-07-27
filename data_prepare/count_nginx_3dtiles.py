@@ -21,7 +21,11 @@ def reduce_nginx_3dtiles(logfile, tile_count):
             date_str = line[3][1:] # eg 17/Jul/2022:20:56:06
             tile_match = regex_b3dm.search(request)
             if tile_match is not None:
-                features_in_tile = tile_count[tile_match[0]]
+                try:
+                    features_in_tile = tile_count[tile_match[0]]
+                except KeyError:
+                    print(f"Didn't find tile {tile_match[0]} in the tile counts")
+                    continue
                 try:
                     date_new = datetime.strptime(date_str, "%d/%b/%Y:%H:%M:%S")
                 except ValueError as e:
@@ -70,6 +74,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     tcpath = sys.argv[3]
 
+    # database query dump of tile_id: feature_cnt in json format
     with Path(tcpath).resolve().open("r") as fo:
         tilecount = {i["tile_id"]: i["cnt"] for i in json.load(fo)}
 
