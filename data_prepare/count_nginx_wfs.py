@@ -18,12 +18,13 @@ def reduce_nginx_wfs(logfile):
             if regex_wfs.search(line) is not None:
                 # we exclude the queries to the tile index
                 if regex_tiles.search(line) is None:
-                    date_str = regex_date.search(line)[0]
+                    # remove the timezone because we just need the month anyway
+                    date_str = regex_date.search(line)[0].split()[0]
                     try:
-                        date_new = datetime.strptime(date_str, "%d/%b/%Y:%H:%M:%S +0200")
-                    except ValueError:
-                        date_new = datetime.strptime(date_str,
-                                                     "%d/%b/%Y:%H:%M:%S +0100")
+                        date_new = datetime.strptime(date_str, "%d/%b/%Y:%H:%M:%S")
+                    except ValueError as e:
+                        print(e)
+                        continue
                     if date_current is not None:
                         if date_new.strftime("%Y-%m") == date_current.strftime("%Y-%m"):
                             sum_current += 1
