@@ -61,12 +61,6 @@ def aggregate_nginx_wfs(logdir):
     return month_count
 
 
-# with open("/home/balazs/Development/3dbag-api/data_prepare/data-download-test.log", "r") as fo:
-#     reader = csv.reader(fo, delimiter=" ", quotechar='"')
-#     for row in reader:
-#         print(f"time: {row[3][1:]}, status: {row[6]} bytes_sent: {row[7]}")
-
-
 if __name__ == "__main__":
     logdir = sys.argv[1]
     outdir = sys.argv[2]
