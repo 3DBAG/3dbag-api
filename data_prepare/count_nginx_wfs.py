@@ -3,7 +3,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 import csv
-import concurrent.futures
 
 
 def reduce_nginx_wfs(logfile):
@@ -14,12 +13,15 @@ def reduce_nginx_wfs(logfile):
     with logfile.open("r") as fo:
         date_current = None
         sum_current = 0
-        for line in fo:
-            if regex_wfs.search(line) is not None:
+        bytes_sent_current = 0
+        reader = csv.reader(fo, delimiter=" ", quotechar='"')
+        for line in reader:
+            request = line[5]
+            bytes_sent_new = int(line[7])
+            date_str = line[3][1:] # eg 17/Jul/2022:20:56:06
+            if regex_wfs.search(request) is not None:
                 # we exclude the queries to the tile index
-                if regex_tiles.search(line) is None:
-                    # remove the timezone because we just need the month anyway
-                    date_str = regex_date.search(line)[0].split()[0]
+                if regex_tiles.search(request) is None:
                     try:
                         date_new = datetime.strptime(date_str, "%d/%b/%Y:%H:%M:%S")
                     except ValueError as e:
@@ -28,14 +30,17 @@ def reduce_nginx_wfs(logfile):
                     if date_current is not None:
                         if date_new.strftime("%Y-%m") == date_current.strftime("%Y-%m"):
                             sum_current += 1
+                            bytes_sent_current += bytes_sent_new
                         elif date_current is not None and date_new.strftime("%Y-%m") != date_current.strftime("%Y-%m"):
-                            yield date_current.strftime("%Y-%m"), sum_current
+                            yield date_current.strftime("%Y-%m"), sum_current, bytes_sent_current
                             sum_current = 1
+                            bytes_sent_current = bytes_sent_new
                             date_current = date_new
                     else:
                         date_current = date_new
                         sum_current += 1
-        yield date_current.strftime("%Y-%m"), sum_current
+                        bytes_sent_current = bytes_sent_new
+        yield date_current.strftime("%Y-%m"), sum_current, bytes_sent_current
 
 
 def map_nginx_wfs(logdir):
@@ -47,12 +52,19 @@ def map_nginx_wfs(logdir):
 def aggregate_nginx_wfs(logdir):
     month_count = {}
     for res in map_nginx_wfs(logdir):
-        for month, count in res:
-            try:
-                month_count[month] += count
-            except KeyError:
-                month_count[month] = count
+        for month, count, bytes in res:
+            if month in month_count:
+                month_count[month][0] += count
+                month_count[month][1] += bytes
+            else:
+                month_count[month] = [count, bytes]
     return month_count
+
+
+# with open("/home/balazs/Development/3dbag-api/data_prepare/data-download-test.log", "r") as fo:
+#     reader = csv.reader(fo, delimiter=" ", quotechar='"')
+#     for row in reader:
+#         print(f"time: {row[3][1:]}, status: {row[6]} bytes_sent: {row[7]}")
 
 
 if __name__ == "__main__":
@@ -61,6 +73,6 @@ if __name__ == "__main__":
     res = aggregate_nginx_wfs(logdir)
     with (Path(outdir).resolve() / "wfs_monthly.csv").open("w") as fo:
         writer = csv.writer(fo)
-        writer.writerow(["month", "count"])
+        writer.writerow(["month", "GetFeature_count", "bytes_sent_total"])
         for m in sorted(res):
-            writer.writerow([m, res[m]])
+            writer.writerow([m, res[m][0], res[m][1]])
