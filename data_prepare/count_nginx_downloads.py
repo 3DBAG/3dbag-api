@@ -105,10 +105,10 @@ if __name__ == "__main__":
     with (Path(outdir).resolve() / f"{fformat}_monthly.csv").open("w") as fo:
         writer = csv.writer(fo)
         if fformat == "cityjson":
-            writer.writerow(["month", "3dtiles_count", "bytes_sent_total", "features_total"])
+            writer.writerow(["month", "tile_count", "bytes_sent_total", "features_total"])
             for m in sorted(res):
                 writer.writerow([m, res[m][0], res[m][1], res[m][2]])
         else:
-            writer.writerow(["month", "3dtiles_count", "bytes_sent_total"])
+            writer.writerow(["month", "tile_count", "bytes_sent_total"])
             for m in sorted(res):
                 writer.writerow([m, res[m][0], res[m][1]])
