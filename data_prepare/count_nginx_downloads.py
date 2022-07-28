@@ -36,11 +36,15 @@ def reduce_nginx_downloads(logfile, tile_count, fformat):
                 tile_match = regex_tile.search(request)
                 # only count the features in a tile for cityjson files
                 if fformat == "cityjson":
-                    try:
-                        features_in_tile = tile_count[tile_match[0]]
-                    except KeyError:
-                        print(f"Didn't find tile {tile_match[0]} in the tile counts")
+                    if tile_match is None:
+                        print(f"Didn't get a tile match on {request}")
                         continue
+                    else:
+                        try:
+                            features_in_tile = tile_count[tile_match[0]]
+                        except KeyError:
+                            print(f"Didn't find tile {tile_match[0]} in the tile counts")
+                            continue
                 else:
                     features_in_tile = 0
                 try:
