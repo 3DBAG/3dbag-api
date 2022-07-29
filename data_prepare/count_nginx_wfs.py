@@ -14,8 +14,10 @@ def reduce_nginx_wfs(logfile):
         date_current = None
         sum_current = 0
         bytes_sent_current = 0
+        ip_counts = {}
         reader = csv.reader(fo, delimiter=" ", quotechar='"')
         for line in reader:
+            ip_addr = line[0]
             request = line[5]
             bytes_sent_new = int(line[7])
             date_str = line[3][1:] # eg 17/Jul/2022:20:56:06
@@ -29,18 +31,21 @@ def reduce_nginx_wfs(logfile):
                         continue
                     if date_current is not None:
                         if date_new.strftime("%Y-%m") == date_current.strftime("%Y-%m"):
-                            sum_current += 1
-                            bytes_sent_current += bytes_sent_new
+                            if ip_addr not in ip_counts:
+                                ip_counts[ip_addr] = [1, bytes_sent_new]
+                            else:
+                                ip_counts[ip_addr][0] += 1
+                                ip_counts[ip_addr][1] += bytes_sent_new
                         elif date_current is not None and date_new.strftime("%Y-%m") != date_current.strftime("%Y-%m"):
-                            yield date_current.strftime("%Y-%m"), sum_current, bytes_sent_current
-                            sum_current = 1
-                            bytes_sent_current = bytes_sent_new
+                            for ip, ipcnt in ip_counts.items():
+                                yield date_current.strftime("%Y-%m"), ip, ipcnt[0], ipcnt[1]
+                            ip_counts = {}
                             date_current = date_new
                     else:
                         date_current = date_new
-                        sum_current += 1
-                        bytes_sent_current = bytes_sent_new
-        yield date_current.strftime("%Y-%m"), sum_current, bytes_sent_current
+                        ip_counts[ip_addr] = [1, bytes_sent_new]
+        for ip, ipcnt in ip_counts.items():
+            yield date_current.strftime("%Y-%m"), ip, ipcnt[0], ipcnt[1]
 
 
 def map_nginx_wfs(logdir):
@@ -50,15 +55,17 @@ def map_nginx_wfs(logdir):
 
 
 def aggregate_nginx_wfs(logdir):
-    month_count = {}
-    for res in map_nginx_wfs(logdir):
-        for month, count, bytes in res:
-            if month in month_count:
-                month_count[month][0] += count
-                month_count[month][1] += bytes
-            else:
-                month_count[month] = [count, bytes]
-    return month_count
+    month_count = []
+    return [(month, ip, count, bytes) for res in map_nginx_wfs(logdir) for month, ip, count, bytes in res]
+    #     for month, count, bytes, ip, ipcnt in res:
+    #         if month in month_count:
+    #             month_count[month][0] += count
+    #             month_count[month][1] += bytes
+    #             month_count[month][2] += bytes
+    #             month_count[month][1] += bytes
+    #         else:
+    #             month_count[month] = [count, bytes, ip, ipcnt]
+    # return month_count
 
 
 if __name__ == "__main__":
@@ -66,7 +73,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     res = aggregate_nginx_wfs(logdir)
     with (Path(outdir).resolve() / "wfs_monthly.csv").open("w") as fo:
-        writer = csv.writer(fo)
-        writer.writerow(["month", "GetFeature_count", "bytes_sent_total"])
-        for m in sorted(res):
-            writer.writerow([m, res[m][0], res[m][1]])
+        writer = csv.writer(fo, quoting=csv.QUOTE_NONNUMERIC)
+        writer.writerow(["month", "ip", "GetFeature_count", "bytes_sent_total"])
+        for m in res:
+            writer.writerow(m)
