@@ -57,15 +57,6 @@ def map_nginx_wfs(logdir):
 def aggregate_nginx_wfs(logdir):
     month_count = []
     return [(month, ip, count, bytes) for res in map_nginx_wfs(logdir) for month, ip, count, bytes in res]
-    #     for month, count, bytes, ip, ipcnt in res:
-    #         if month in month_count:
-    #             month_count[month][0] += count
-    #             month_count[month][1] += bytes
-    #             month_count[month][2] += bytes
-    #             month_count[month][1] += bytes
-    #         else:
-    #             month_count[month] = [count, bytes, ip, ipcnt]
-    # return month_count
 
 
 if __name__ == "__main__":
@@ -75,5 +66,5 @@ if __name__ == "__main__":
     with (Path(outdir).resolve() / "wfs_monthly.csv").open("w") as fo:
         writer = csv.writer(fo, quoting=csv.QUOTE_NONNUMERIC)
         writer.writerow(["month", "ip", "GetFeature_count", "bytes_sent_total"])
-        for m in res:
+        for m in sorted(res):
             writer.writerow(m)

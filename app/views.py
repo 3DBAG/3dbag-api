@@ -223,6 +223,7 @@ def pand():
 @app.get('/collections/pand/items')
 def pand_items():
     re_bbox = request.args.get("bbox", None)
+    re_datetime = request.args.get("datetime", None) # TODO: implement
     if re_bbox is not None:
         r = re_bbox.split(',')
         if len(r) != 4:
