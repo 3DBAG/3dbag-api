@@ -24,6 +24,16 @@ def load_cityjsonfeature_meta(featureId):
             return json.load(fo, encoding='utf-8-sig')
 
 
+def load_cityjson_meta():
+    json_path = parser.find_meta_path(app.config["DATA_BASE_DIR"])
+    if not json_path.exists():
+        logging.debug(f"CityJSON metadata file {json_path} not found ")
+        abort(404)
+    else:
+        with json_path.open("r") as fo:
+            return json.load(fo, encoding='utf-8-sig')
+
+
 def load_cityjsonfeature(featureId):
     """Loads a single feature."""
     parent_id = parser.get_parent_id(featureId)
@@ -164,9 +174,10 @@ def collections():
 
 @app.get('/collections/pand')
 def pand():
+    meta = load_cityjson_meta()
     return {
         "id": "pand",
-        "title": "3D pand",
+        "title": meta["metadata"]["title"],
         "description": "the 3d bag pand layer",
         "extent": {
             "spatial": {
@@ -191,6 +202,13 @@ def pand():
         "crs": [
             "https://www.opengis.net/def/crs/EPSG/0/7415"
         ],
+        "transform": meta["transform"],
+        "version": {
+            "cityjson": meta["version"],
+            "collection": meta["metadata"]["identifier"],
+        },
+        "referenceDate": meta["metadata"]["referenceDate"],
+        "pointOfContact": meta["metadata"]["pointOfContact"],
         "links": [
             {
                 "href": url_for("pand", _external=True),
@@ -249,7 +267,6 @@ def pand_items():
 @app.get('/collections/pand/items/<featureId>')
 def get_feature(featureId):
     logging.debug(f"requesting {featureId}")
-    meta = load_cityjsonfeature_meta(featureId)
     cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
@@ -280,7 +297,6 @@ def get_feature(featureId):
     return {
         "id": cityjsonfeature["id"],
         "cityjsonfeature": cityjsonfeature,
-        "metadata": meta,
         "links": links
     }
 

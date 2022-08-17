@@ -52,6 +52,11 @@ def find_tile_meta_path(data_base_dir, tile_id):
     return base / tile_id / f"meta.json"
 
 
+def find_meta_path(data_base_dir):
+    base = Path(data_base_dir).resolve()
+    return base / f"meta.json"
+
+
 def parse_surfaces_csv(path: Path):
     """Parse a CSV file containing the surfaces data.
 
