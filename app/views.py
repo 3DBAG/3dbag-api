@@ -4,8 +4,19 @@ import json
 
 from flask import (render_template, abort, request, url_for, jsonify,
                    send_from_directory)
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from app import parser, index, db, app, FEATURE_IDX, FEATURE_IDS
+from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS
+
+# TODO: We should generate the API keys with os.urandom(24)
+users = {
+    "balazs": generate_password_hash("1234")
+}
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in users and check_password_hash(users.get(username), password):
+        return username
 
 
 def load_cityjsonfeature_meta(featureId):
@@ -240,6 +251,7 @@ def pand():
 
 
 @app.get('/collections/pand/items')
+@auth.login_required
 def pand_items():
     re_bbox = request.args.get("bbox", None)
     re_datetime = request.args.get("datetime", None) # TODO: implement
@@ -266,6 +278,7 @@ def pand_items():
 
 
 @app.get('/collections/pand/items/<featureId>')
+@auth.login_required
 def get_feature(featureId):
     logging.debug(f"requesting {featureId}")
     cityjsonfeature = load_cityjsonfeature(featureId)
@@ -304,6 +317,7 @@ def get_feature(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/addresses')
+@auth.login_required
 def get_addresses(featureId):
     logging.debug(f"requesting {featureId} addresses")
     parent_id = parser.get_parent_id(featureId)
@@ -344,6 +358,7 @@ def get_addresses(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/surfaces')
+@auth.login_required
 def get_surfaces(featureId):
     logging.debug(f"requesting {featureId} surfaces")
     parent_id = parser.get_parent_id(featureId)

@@ -1,5 +1,19 @@
 # 3D BAG API
 
+## Security
+
+We use HTTP Basic Authentication to secure the API.
+
+The user credentials are the username and password, separated by a colon (`username:password`) and encoded using base64.
+
+### Examples:
+
+#### Curl
+
+```shell
+curl -H "Authorization: Basic YmFsYXpzOjEyMzQ=" http://localhost:56733/collections/pand/items
+```
+
 ## Dockerize the server
 
 https://www.digitalocean.com/community/tutorials/how-to-build-and-deploy-a-flask-application-using-docker-on-ubuntu-20-04
