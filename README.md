@@ -1,10 +1,61 @@
 # 3D BAG API
 
+## User management
+
+We store our users in database(s).
+Probably PostgreSQL in production and SQLite for development.
+
+We use [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/2.x/quickstart/#a-minimal-application) for the ORM.
+
+### Schema
+
+#### UserAuth
+
+Stores the data for authenticating a user.
+
+| Field name | Field type | Constraints      |
+|------------|------------|------------------|
+| id         | int        | PK               |
+| username   | string(80) | unique, not null |
+| password   | tbd        | not null         |
+
+Add a new entry:
+
+```python
+from werkzeug.security import generate_password_hash
+from app import views, db
+b = views.UserAuth(username="balazs", password=generate_password_hash("1234"))
+db.session.add(b)
+db.session.commit()
+```
+
+#### UserRegister
+
+Stores additional information about a user that we use for analytics and user management.
+
+| Field name      | Field type  | Constraints     |
+|-----------------|-------------|-----------------|
+| id              |             | PK              |
+| userauth_id     |             | FK(userauth:id) |
+| name            |             |                 |
+| email           |             | not null        |
+| date_registered | timestamptz | not null        |
+
+
 ## Security
 
 We use HTTP Basic Authentication to secure the API.
+The *Basic* authentication scheme (or "challenge") requires that the user credentials are the username and password, separated by a colon (`username:password`) and encoded using base64.
+The base64 encoded credentials are sent in the `Authorisation` header, together with the authentication scheme.
 
-The user credentials are the username and password, separated by a colon (`username:password`) and encoded using base64.
+The username and password string `balazs:1234` is `YmFsYXpzOjEyMzQ=` in base64.
+
+In Python, base64 encoding works like this:
+
+```python
+import base64
+base64.b64encode("balazs:1234".encode("utf-8"))
+```
 
 ### Examples:
 
@@ -49,7 +100,7 @@ docker run \
   -d \
   -p 56733:80 \
   --name=${server} \
-  -e API_CONFIG="/app/3dbag_api_settings.cfg" \
+  -e APP_CONFIG="/app/3dbag_api_settings.cfg" \
   -v /data/3DBAGplus:/data/3DBAGplus \
   -v "$(pwd)":/app ${server}
 ```

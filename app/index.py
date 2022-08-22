@@ -2,10 +2,14 @@ from typing import Tuple
 from bisect import bisect_left
 from pathlib import Path
 import json
+import logging
 
 
 from shapely.strtree import STRtree
 from shapely.geometry import box, shape
+from shapely import speedups
+speedups.enable()
+logging.info(f"shapely speedups enabled: {speedups.available}")
 
 
 def features_in_bbox(conn, bbox):

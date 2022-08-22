@@ -4,18 +4,27 @@ import json
 
 from flask import (render_template, abort, request, url_for, jsonify,
                    send_from_directory)
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 
 from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS
 
-# TODO: We should generate the API keys with os.urandom(24)
-users = {
-    "balazs": generate_password_hash("1234")
-}
+
+class UserAuth(db.Model):
+    __tablename__ = "userauth"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    # TODO: We cannot simply store the passwords in plaintext, see https://www.vaadata.com/blog/how-to-securely-store-passwords-in-database/, https://stackoverflow.com/a/1054033, https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+    # TODO: We should probably generate the API keys with os.urandom(24) as per https://realpython.com/token-based-authentication-with-flask/
+    password = db.Column(db.String(80), nullable=False)
+
+    def __repr__(self):
+        return '<User %r>' % self.username
 
 @auth.verify_password
 def verify_password(username, password):
-    if username in users and check_password_hash(users.get(username), password):
+    existing_user = UserAuth.query.filter_by(username=username).first()
+    if existing_user and check_password_hash(existing_user.password, password):
         return username
 
 

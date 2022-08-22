@@ -39,6 +39,14 @@ https://stackoverflow.com/a/39914013
 use the `Authorization` header to pass access tokens
 additionally, we can add IP restriction, so that the user can register a IP addresses where the token is allowed
 
+### Storing passwords
+
+We cannot simply store the passwords in plaintext.
+See,
++ https://www.vaadata.com/blog/how-to-securely-store-passwords-in-database/
++ https://stackoverflow.com/a/1054033
++ https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+
 ### API keys
 
 Only considered to be secure if used together with other security mechanisms such as HTTPS/SSL.
