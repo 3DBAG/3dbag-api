@@ -443,6 +443,8 @@ components:
           type: string
         description:
           type: string
+        name:
+          type: string
     featureCityJSON:
       type: object
       properties:
@@ -662,7 +664,11 @@ components:
             $ref: '#/components/schemas/exception'
     NotFound:
       description: |-
-        The requested URI was not found.
+        The requested URI was not found. Also raised when the requested `featureId` was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/exception'
     InvalidParameter:
       description: |-
         A query parameter has an invalid value.
