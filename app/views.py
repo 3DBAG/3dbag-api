@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 from enum import Enum
 
-from flask import (render_template, abort, request, url_for, jsonify, g)
+from flask import (abort, request, url_for, jsonify, g, render_template)
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.exceptions import HTTPException
 import yaml
@@ -268,7 +268,7 @@ def api():
 
 @app.get('/api.html')
 def api_html():
-    return render_template("swagger_ui.html")
+    return render_template("redoc_ui.html")
 
 
 @app.get('/conformance')

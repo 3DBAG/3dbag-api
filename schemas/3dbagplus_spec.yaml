@@ -449,7 +449,7 @@ components:
       type: object
       properties:
         feature:
-          $ref: 'cityjsonfeature.min.schema.json'
+          type: object
         id:
           type: string
         links:
