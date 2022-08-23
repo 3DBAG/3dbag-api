@@ -3,8 +3,8 @@ from pathlib import Path
 import json
 
 from flask import (render_template, abort, request, url_for, jsonify,
-                   send_from_directory)
-from werkzeug.security import check_password_hash
+                   send_from_directory, g)
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.exceptions import HTTPException
 
 from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS
@@ -82,18 +82,38 @@ class UserAuth(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    # TODO: We cannot simply store the passwords in plaintext, see https://www.vaadata.com/blog/how-to-securely-store-passwords-in-database/, https://stackoverflow.com/a/1054033, https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
     # TODO: We should probably generate the API keys with os.urandom(24) as per https://realpython.com/token-based-authentication-with-flask/
-    password = db.Column(db.String(80), nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+
+    def __init__(self, username, password):
+        self.username = username
+        # TODO: require at least 12 mixed character long passwords from the user
+        self.password = password
 
     def __repr__(self):
         return '<User %r>' % self.username
 
+    @property
+    def password(self):
+        raise AttributeError('password is not a readable attribute')
+
+    @password.setter
+    def password(self, password):
+        self.password_hash = generate_password_hash(password, method="pbkdf2:sha256:320000")
+
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
 @auth.verify_password
 def verify_password(username, password):
+    if username == "":
+        return False
     existing_user = UserAuth.query.filter_by(username=username).first()
-    if existing_user and check_password_hash(existing_user.password, password):
-        return username
+    if not existing_user:
+        return False
+    g.current_user = username
+    return existing_user.verify_password(password)
 
 
 def load_cityjsonfeature_meta(featureId):
