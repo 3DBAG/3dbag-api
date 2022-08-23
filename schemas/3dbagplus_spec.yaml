@@ -448,8 +448,8 @@ components:
     featureCityJSON:
       type: object
       properties:
-        cityjsonfeature:
-          $ref: https://3d.bk.tudelft.nl/schemas/cityjson/1.1.1/cityjsonfeature.schema.json
+        feature:
+          $ref: 'cityjsonfeature.min.schema.json'
         id:
           type: string
         links:

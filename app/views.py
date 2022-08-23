@@ -3,10 +3,10 @@ from pathlib import Path
 import json
 from enum import Enum
 
-from flask import (render_template, abort, request, url_for, jsonify,
-                   send_from_directory, g)
+from flask import (render_template, abort, request, url_for, jsonify, g)
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.exceptions import HTTPException
+import yaml
 
 from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS
 
@@ -260,8 +260,10 @@ def landing_page():
 
 @app.get('/api')
 def api():
-    # TODO: need to send JSON instead of YAML
-    return send_from_directory(Path(app.root_path).parent, '3dbag_api_merged.yaml')
+    rdir = Path(app.root_path).parent / "schemas"
+    with (rdir / "3dbagplus_spec.yaml").open("r") as fo:
+        f = yaml.full_load(fo)
+    return jsonify(f)
 
 
 @app.get('/api.html')
