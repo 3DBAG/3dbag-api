@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 import json
+from enum import Enum
 
 from flask import (render_template, abort, request, url_for, jsonify,
                    send_from_directory, g)
@@ -77,6 +78,11 @@ def auth_error(status):
     return jsonify(error), status
 
 
+class Permission(Enum):
+    USER = 1
+    ADMINISTRATOR = 16
+
+
 class UserAuth(db.Model):
     __tablename__ = "userauth"
 
@@ -84,11 +90,13 @@ class UserAuth(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     # TODO: We should probably generate the API keys with os.urandom(24) as per https://realpython.com/token-based-authentication-with-flask/
     password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.Enum(Permission))
 
-    def __init__(self, username, password):
+    def __init__(self, username, password, role=Permission.USER):
         self.username = username
         # TODO: require at least 12 mixed character long passwords from the user
         self.password = password
+        self.role = role
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -104,16 +112,25 @@ class UserAuth(db.Model):
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    def get_roles(self):
+        return self.role
+
+
+@auth.get_user_roles
+def get_user_roles(user):
+    return user.get_roles()
+
 
 @auth.verify_password
 def verify_password(username, password):
     if username == "":
-        return False
+        return None
     existing_user = UserAuth.query.filter_by(username=username).first()
     if not existing_user:
-        return False
+        return None
     g.current_user = username
-    return existing_user.verify_password(password)
+    if existing_user.verify_password(password):
+        return existing_user
 
 
 def load_cityjsonfeature_meta(featureId):
@@ -496,6 +513,15 @@ def get_surfaces(featureId):
     ]
 
     return surfaces_record
+
+
+@app.route("/register", methods=["GET", "POST"])
+@auth.login_required(role=Permission.ADMINISTRATOR)
+def register():
+    user = UserAuth(**request.json)
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({"message": f"Registered user: {user.username}"})
 
 
 if __name__ == '__main__':

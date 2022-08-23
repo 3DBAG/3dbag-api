@@ -7,24 +7,48 @@ Probably PostgreSQL in production and SQLite for development.
 
 We use [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/2.x/quickstart/#a-minimal-application) for the ORM.
 
+Create all the tables in the schema:
+
+```python
+import os
+from app import db
+os.environ["APP_CONFIG"] = "3dbag_api_settings.cfg"
+db.create_all()
+# db.drop_all()
+```
+
 ### Schema
 
 #### UserAuth
 
 Stores the data for authenticating a user.
 
-| Field name | Field type | Constraints      |
-|------------|------------|------------------|
-| id         | int        | PK               |
-| username   | string(80) | unique, not null |
-| password   | tbd        | not null         |
+| Field name | Field type              | Constraints      |
+|------------|-------------------------|------------------|
+| id         | int                     | PK               |
+| username   | string(80)              | unique, not null |
+| password   | string(128)             | not null         |
+| role       | enum(USER,ADMINSTRATOR) |                  |
 
-Add a new entry:
+New users are registered at the `/register` endpoint.
+Only administrators can add new users, so you need to authorize as an admin (see *Security* below).
+
+```shell
+curl \
+  --header "Content-Type: application/json" \
+  --header "Authorization: Basic YmFsYXpzOjEyMzQ=" \
+  --request POST \
+  --data '{"username":"somebody", "password":"1234"}' \
+  http://localhost:56733/register
+```
+
+New adminstrators are added in a python session.
 
 ```python
-from werkzeug.security import generate_password_hash
+import os
 from app import views, db
-b = views.UserAuth(username="balazs", password=generate_password_hash("1234"))
+os.environ["APP_CONFIG"] = "3dbag_api_settings.cfg"
+b = views.UserAuth(username="balazs", password="1234", role=views.Permission.ADMINISTRATOR)
 db.session.add(b)
 db.session.commit()
 ```
@@ -62,7 +86,7 @@ base64.b64encode("balazs:1234".encode("utf-8"))
 #### Curl
 
 ```shell
-curl -H "Authorization: Basic YmFsYXpzOjEyMzQ=" http://localhost:56733/collections/pand/items
+curl --header "Authorization: Basic YmFsYXpzOjEyMzQ=" http://localhost:56733/collections/pand/items
 ```
 
 ## Dockerize the server
