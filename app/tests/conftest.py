@@ -1,6 +1,6 @@
 import pytest
 
-from ..app import app as flask_app
+from app import app as flask_app
 
 
 @pytest.fixture()
@@ -16,3 +16,8 @@ def client(app):
 @pytest.fixture()
 def runner(app):
     return app.test_cli_runner()
+
+@pytest.fixture()
+def authorization():
+    # balazs:1234 in base64
+    return {"Authorization": "Basic YmFsYXpzOjEyMzQ="}

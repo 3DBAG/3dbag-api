@@ -1,22 +1,19 @@
 from pprint import pprint
 
-from ..app import *
+import yappi
 
-def test_landing_page(client):
-    response = client.get("/")
-    assert response.get_json()["hello"] == "world"
+from app.views import load_cityjsonfeature, pand_items
+def test_collections_pand_items(client, authorization):
+    response = client.get("/collections/pand/items", headers=authorization)
+    print(response.get_json())
 
-def test_conformance(client):
-    response = client.get("/conformance")
-
-def test_collections(client):
-    response = client.get("/collections")
-
-def test_collections_pand(client):
-    response = client.get("/collections/pand")
-
-def test_collections_pand_items(client):
-    response = client.get("/collections/pand/items")
+def test_collections_pand_items_bbox(app, authorization):
+    bbox = "68194.423,395606.054,68608.839,396076.441"
+    with app.test_request_context("/collections/pand/items",
+                                  headers=authorization,
+                                  query_string={"bbox": bbox}):
+        response = pand_items()
+        print(response.get_json())
 
 def test_collections_pand_one(client):
     response = client.get("/collections/pand/items/0851100000000564")

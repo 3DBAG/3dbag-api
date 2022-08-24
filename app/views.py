@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.exceptions import HTTPException
 import yaml
 
-from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS
+from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS, db_users
 
 
 @app.errorhandler(HTTPException)
@@ -83,14 +83,14 @@ class Permission(Enum):
     ADMINISTRATOR = 16
 
 
-class UserAuth(db.Model):
+class UserAuth(db_users.Model):
     __tablename__ = "userauth"
 
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
+    id = db_users.Column(db_users.Integer, primary_key=True)
+    username = db_users.Column(db_users.String(80), unique=True, nullable=False)
     # TODO: We should probably generate the API keys with os.urandom(24) as per https://realpython.com/token-based-authentication-with-flask/
-    password_hash = db.Column(db.String(128), nullable=False)
-    role = db.Column(db.Enum(Permission))
+    password_hash = db_users.Column(db_users.String(128), nullable=False)
+    role = db_users.Column(db_users.Enum(Permission))
 
     def __init__(self, username, password, role=Permission.USER):
         self.username = username
@@ -521,8 +521,8 @@ def get_surfaces(featureId):
 @auth.login_required(role=Permission.ADMINISTRATOR)
 def register():
     user = UserAuth(**request.json)
-    db.session.add(user)
-    db.session.commit()
+    db_users.session.add(user)
+    db_users.session.commit()
     return jsonify({"message": f"Registered user: {user.username}"})
 
 
