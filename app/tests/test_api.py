@@ -56,7 +56,7 @@ class TestDev:
 
 
 class TestOnGodzilla:
-    def test_collections_pand_items_bbox(app, authorization):
+    def test_collections_pand_items_bbox(self, app, authorization):
         bbox = "68194.423,395606.054,68608.839,396076.441"
         with app.test_request_context("/collections/pand/items",
                                       headers=authorization,
@@ -65,7 +65,7 @@ class TestOnGodzilla:
             assert response.status_code == 200
             print(len(response.get_json()["features"]))
 
-    def test_collections_pand_items_bbox_large(app, authorization):
+    def test_collections_pand_items_bbox_large(self, app, authorization):
         """Large area in Den Haag, 44755451m2, 94912 features"""
         bbox = "77797.577,450905.086,85494.901,456719.503"
         with app.test_request_context("/collections/pand/items",
@@ -75,7 +75,7 @@ class TestOnGodzilla:
             assert response.status_code == 200
             print(len(response.get_json()["features"]))
 
-    def test_collections_pand_items_bbox_verylarge(app, authorization):
+    def test_collections_pand_items_bbox_verylarge(self, app, authorization):
         """Very large area in Den Haag, 234117167m2, 284462 features"""
         bbox = "75877.011,446130.034,92446.593,460259.369"
         with app.test_request_context("/collections/pand/items",
