@@ -425,9 +425,7 @@ def pand_items():
 @auth.login_required
 def get_feature(featureId):
     logging.debug(f"requesting {featureId}")
-    conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
-    cityjsonfeature = load_cityjsonfeature(conn, featureId)
-    conn.conn.close()
+    cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
         {
@@ -454,11 +452,11 @@ def get_feature(featureId):
             "type": "application/city+json"
         })
 
-    return {
+    return jsonify({
         "id": cityjsonfeature["id"],
-        "cityjsonfeature": cityjsonfeature,
+        "feature": cityjsonfeature,
         "links": links
-    }
+    })
 
 
 
@@ -500,7 +498,7 @@ def get_addresses(featureId):
         },
     ]
 
-    return addresses_record
+    return jsonify(addresses_record)
 
 
 @app.get('/collections/pand/items/<featureId>/surfaces')
@@ -544,7 +542,7 @@ def get_surfaces(featureId):
         },
     ]
 
-    return surfaces_record
+    return jsonify(surfaces_record)
 
 
 @app.route("/register", methods=["GET", "POST"])
