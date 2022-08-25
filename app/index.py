@@ -12,7 +12,44 @@ speedups.enable()
 logging.info(f"shapely speedups enabled: {speedups.available}")
 
 
+class BBOXCache:
+    """Cached BBOX query of features.
+
+    If a new BBOX is requested then query the index, store the feature subset in the
+    cache and return the feature subset.
+
+    If the previously reqested BBOX is requested again, return the feature subset from
+    the cache.
+    """
+
+    def __init__(self):
+        self.feature_subset = ()
+        self.bbox = ()
+
+    def add(self, feature_subset, bbox: Tuple[str, str, str, str]):
+        self.feature_subset = feature_subset
+        self.bbox = bbox
+
+    def get(self, conn, bbox: Tuple[float, float, float, float]):
+        """Get the featureIDs in the `bbox`. BBOX comparison is string comparison of
+        the coordinate values that are formatted to three decimal places.
+        """
+        # We exepect that at this point we have a valid 'bbox', as in a tuple of
+        # four floats
+        bbox_new = tuple(map("{:.3f}".format, bbox))
+        if bbox_new == self.bbox:
+            return self.feature_subset
+        else:
+            self.add(features_in_bbox(conn, bbox_new), bbox_new)
+            return self.feature_subset
+
+    def clear(self):
+        self.feature_subset = ()
+        self.bbox = ()
+
+
 def features_in_bbox(conn, bbox):
+    # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
     query= f"""
     SELECT identificatie
     FROM bag_index
@@ -24,7 +61,7 @@ def features_in_bbox(conn, bbox):
              AND miny <= {bbox[3]}
              AND maxy >= {bbox[1]});
     """.replace("\n", "")
-    return [t[0] for t in conn.get_query(query)]
+    return tuple(t[0] for t in conn.get_query(query))
 
 
 def read_tiles_to_shapely(tiles_json):

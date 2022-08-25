@@ -11,6 +11,9 @@ import yaml
 from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS, db_users
 
 
+bbox_cache = index.BBOXCache()
+
+
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     """Return JSON instead of HTML for HTTP errors."""
@@ -176,10 +179,12 @@ def load_cityjsonfeature(featureId):
             return json.load(fo, encoding='utf-8-sig')
 
 
-def get_paginated_features(features, url, offset, limit):
+def get_paginated_features(features, url, offset, limit, bbox=None):
     """From https://stackoverflow.com/a/55546722"""
     offset = int(offset)
     limit = int(limit)
+    if bbox is None:
+        bbox = ""
     nr_matched = len(features)
     if nr_matched < offset or limit < 0:
         abort(404)
@@ -193,20 +198,31 @@ def get_paginated_features(features, url, offset, limit):
         "type": "application/city+json",
         "title": "this document"
     })
+    url_prev = url_next = f"{url}?"
     # make previous URL
     if offset > 1:
         offset_copy = max(1, offset - limit)
         limit_copy = offset - 1
+        ol = f"offset={offset_copy:d}&limit={limit_copy:d}"
+        if bbox == "":
+            url_prev += ol
+        else:
+            url_prev += f"bbox={bbox}&" + ol
         links.append({
-            "href": f"{url}?offset={offset_copy:d}&limit={limit_copy:d}",
+            "href": url_prev,
             "rel": "prev",
             "type": "application/city+json",
         })
     # make next URL
     if offset + limit < nr_matched:
         offset_copy = offset + limit
+        ol = f"offset={offset_copy:d}&limit={limit:d}"
+        if bbox == "":
+            url_next += ol
+        else:
+            url_next += f"bbox={bbox}&" + ol
         links.append({
-            "href": f"{url}?offset={offset_copy:d}&limit={limit:d}",
+            "href": url_next,
             "rel": "next",
             "type": "application/city+json",
         })
@@ -369,10 +385,13 @@ def pand():
 @app.get('/collections/pand/items')
 @auth.login_required
 def pand_items():
-    re_bbox = request.args.get("bbox", None)
-    re_datetime = request.args.get("datetime", None) # TODO: implement
-    if re_bbox is not None:
-        r = re_bbox.split(',')
+    query_params = dict(
+        bbox=request.args.get("bbox", None),
+        offset=request.args.get("offset", 1),
+        limit=request.args.get("limit", 10)
+    )
+    if query_params["bbox"] is not None:
+        r = query_params["bbox"].split(',')
         if len(r) != 4:
             abort(400)
         try:
@@ -382,15 +401,15 @@ def pand_items():
             abort(400)
         # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
         logging.debug(f"query with bbox {bbox}")
+        # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
         conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
-        feature_subset = index.features_in_bbox(conn, bbox)
+        feature_subset = bbox_cache.get(conn, bbox)
         conn.conn.close()
     else:
         feature_subset = FEATURE_IDS
     return jsonify(get_paginated_features(feature_subset,
                                           url_for("pand_items", _external=True),
-                                          offset=request.args.get("offset", 1),
-                                          limit=request.args.get("limit", 10)))
+                                          **query_params))
 
 
 @app.get('/collections/pand/items/<featureId>')
