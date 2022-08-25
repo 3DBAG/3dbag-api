@@ -17,11 +17,10 @@ def get_tile_id(parent_id, feature_index):
         return None
 
 
-def feature_index(feature_index_csv):
+def feature_index(conn):
     """Returns the feature-tile index of the 3D BAG."""
-    p = Path(feature_index_csv).resolve()
-    with p.open("r") as fo:
-        return dict((row[0], row[1]) for row in csv.reader(fo))
+    query = "SELECT identificatie, tile_id FROM bag_index"
+    return dict((k, v) for k, v in conn.get_query(query))
 
 
 def find_surfaces_csv_path(data_base_dir, tile_id):
@@ -30,7 +29,7 @@ def find_surfaces_csv_path(data_base_dir, tile_id):
     :returns: Absolute path to CSV file.
     """
     base = Path(data_base_dir).resolve()
-    return base / tile_id / f"{tile_id}_lod2_surface_areas.csv"
+    return base / "tiles" / tile_id / f"{tile_id}_lod2_surface_areas.csv"
 
 
 def find_addresses_csv_path(data_base_dir, tile_id):
@@ -39,17 +38,17 @@ def find_addresses_csv_path(data_base_dir, tile_id):
     :returns: Absolute path to CSV file.
     """
     base = Path(data_base_dir).resolve()
-    return base / tile_id / f"{tile_id}_lod2_surface_areas_addr.csv"
+    return base / "tiles" / tile_id / f"{tile_id}_lod2_surface_areas_addr.csv"
 
 
 def find_co_path(data_base_dir, featureId, tile_id):
     base = Path(data_base_dir).resolve()
-    return base / tile_id / f"{featureId}.json"
+    return base / "tiles" / tile_id / f"{featureId}.json"
 
 
 def find_tile_meta_path(data_base_dir, tile_id):
     base = Path(data_base_dir).resolve()
-    return base / tile_id / f"meta.json"
+    return base / "tiles" / tile_id / f"meta.json"
 
 
 def find_meta_path(data_base_dir):

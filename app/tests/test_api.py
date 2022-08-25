@@ -5,6 +5,18 @@ def test_collections_pand_items(client, authorization):
     response = client.get("/collections/pand/items", headers=authorization)
     print(len(response.get_json()["features"]))
 
+
+# bbox in tile 997: "226263.74,504823.147,228073.80,506526.41"
+
+def test_collections_pand_items_bbox_997(app, authorization):
+    bbox = "89828.16,398684.9392,91912.899,400333.2867"
+    with app.test_request_context("/collections/pand/items",
+                                  headers=authorization,
+                                  query_string={"bbox": bbox}):
+        response = pand_items()
+        print(len(response.get_json()["features"]))
+
+
 def test_collections_pand_items_bbox(app, authorization):
     bbox = "68194.423,395606.054,68608.839,396076.441"
     with app.test_request_context("/collections/pand/items",

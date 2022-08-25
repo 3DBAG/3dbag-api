@@ -2,15 +2,22 @@ import logging
 from pathlib import Path
 import json
 from enum import Enum
+from sys import getsizeof
 
 from flask import (abort, request, url_for, jsonify, g, render_template)
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.exceptions import HTTPException
 import yaml
 
-from app import parser, index, db, app, auth, FEATURE_IDX, FEATURE_IDS, db_users
+from app import parser, index, db, app, auth, db_users
 
-
+# Populate featureID cache (get all identificatie:tile_id into memory
+conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
+FEATURE_IDX = parser.feature_index(conn) # feature index of (featureId : tile_id)
+conn.conn.close()
+logging.debug(f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
+FEATURE_IDS = tuple(FEATURE_IDX.keys()) # featureID container
+# Init empty BBOX cache of featureIDs
 bbox_cache = index.BBOXCache()
 
 
@@ -406,7 +413,9 @@ def pand_items():
         feature_subset = bbox_cache.get(conn, bbox)
         conn.conn.close()
     else:
+        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
         feature_subset = FEATURE_IDS
+        conn.conn.close()
     return jsonify(get_paginated_features(feature_subset,
                                           url_for("pand_items", _external=True),
                                           **query_params))
@@ -416,7 +425,9 @@ def pand_items():
 @auth.login_required
 def get_feature(featureId):
     logging.debug(f"requesting {featureId}")
-    cityjsonfeature = load_cityjsonfeature(featureId)
+    conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
+    cityjsonfeature = load_cityjsonfeature(conn, featureId)
+    conn.conn.close()
 
     links = [
         {
