@@ -152,6 +152,21 @@ Then go to http://localhost:8081/teamengine/ in the browser and:
 
 Note that in repeated tries, you need to always delete the validation session and restart from scratch, because the test suite caches the results.
 
+## Performance
+
+**Measurement methods** 
+
+- Manual query in Firefox, refresh a couple of times. Check Firefox's Request Timing, [`Waiting` stage](https://firefox-source-docs.mozilla.org/devtools-user/network_monitor/request_details/#request-timing). Guesstimage the average Waiting time.
+- Use the [`yappi`](https://github.com/sumerc/yappi) (or CProfile) profiler for profiling the instructions within endpoints (by running the tests).
+
+### `/collections/pand/items?bbox`
+
+*2022-08-24 f6cba0a6* – bbox: *75877.011,446130.034,92446.593,460259.369*, very large area in Den Haag, 234117167m2, 284462 features. Profiler: 3.3s because the test setup is very slow, because it needs to read things into memory (feature index etc), but these are one-time costs at starting up the application (600ms features_in_bbox). Firefox: ~1.3s on first query, 500ms on paging the response (10 features/page).
+
+### `/collections/pand/items/{featureId}/surfaces`
+
+*2022-08-25 c30c8b72* – featureId: *NL.IMBAG.Pand.1655100000548671-0* (last record in the surfaces csv). Profiler: ~240ms (40ms get_surfaces, but it can be as low as 6ms for features that are at the beginning of the csv), same performance on local and godzilla. Firefox: 400-500ms.
+
 ## License
 
 All rights reserved by 3DGI v.o.f. You are not allowed to do anything with the repository without explicit agreement from 3DGI.
