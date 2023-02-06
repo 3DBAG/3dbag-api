@@ -1,3 +1,8 @@
+"""Database helper functions
+
+Copyright 2022 3DGI <info@3dgi.nl>
+"""
+
 import logging
 import sqlite3
 

@@ -1,3 +1,7 @@
+"""OGC Features API backed by CityJSON
+
+Copyright 2022 3DGI <info@3dgi.nl>
+"""
 import logging
 from pathlib import Path
 import json

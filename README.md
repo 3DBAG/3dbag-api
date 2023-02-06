@@ -176,7 +176,3 @@ Note that in repeated tries, you need to always delete the validation session an
 ### `/collections/pand/items/{featureId}/surfaces`
 
 *2022-08-25 c30c8b72* – featureId: *NL.IMBAG.Pand.1655100000548671-0* (last record in the surfaces csv). Profiler: ~240ms (40ms get_surfaces, but it can be as low as 6ms for features that are at the beginning of the csv), same performance on local and godzilla. Firefox: 400-500ms.
-
-## License
-
-All rights reserved by 3DGI v.o.f. You are not allowed to do anything with the repository without explicit agreement from 3DGI.

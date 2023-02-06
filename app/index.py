@@ -1,3 +1,7 @@
+"""Data indexing
+
+Copyright 2022 3DGI <info@3dgi.nl>
+"""
 from typing import Tuple
 from bisect import bisect_left
 from pathlib import Path

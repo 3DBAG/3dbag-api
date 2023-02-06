@@ -1,3 +1,7 @@
+"""Data parsing
+
+Copyright 2022 3DGI <info@3dgi.nl>
+"""
 import csv
 from pathlib import Path
 
