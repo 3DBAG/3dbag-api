@@ -1,5 +1,15 @@
 # 3D BAG API
 
+## Development server
+
+To start a development server, you need data, and you need to configure the flask app.
+
+Test data is available at https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz
+
+Set the configuration with `APP_CONFIG="3dbag_api_settings.cfg"` environment variable.
+
+The `start.sh` script starts a server in a docker container.
+
 ## User management
 
 We store our users in database(s).
