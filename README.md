@@ -1,14 +1,54 @@
 # 3D BAG API
 
+## Data:
+
+To run the server locally or to start a development server, you need data. 
+Test data is available [here](https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz).
+
+```bash
+mkdir $HOME/data
+cd $HOME/data
+curl https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz | tar -xz
+```
+
+The modify the links in configuration file  3dbag_api_setting_local.cfg to point at where the data was stored. 
+
+## Run Locally:
+
+You first need to install [poetry](https://python-poetry.org/docs/) and enable the creating of vitual env. within the project:
+
+```bash
+  poetry config virtualenvs.in-project true
+```
+
+Then, from within the repo you can create a new virtual environmnet with:
+
+```bash 
+  poetry install
+  source .venv/bin/activate
+```
+
+Then run:
+
+```bash
+  export APP_CONFIG="$(pwd)/3dbag_api_settings_local.cfg" 
+  python3 start.py
+  flask --app app  --debug run --host=0.0.0.0 --port=80  
+```
+
+and check: http://localhost:80
+
 ## Development server
+To start the development server you can run the following:
 
-To start a development server, you need data, and you need to configure the flask app.
+```bash
+	poetry export --without dev --without-hashes --output ./requirements.txt --format "requirements.txt"
+	sh start.sh
+```
 
-Test data is available at https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz
+and check: http://localhost:56733
 
-Set the configuration with `APP_CONFIG="3dbag_api_settings.cfg"` environment variable.
-
-The `start.sh` script starts a server in a docker container.
+If you are working on an Apple M1 machine and you need to add the flag  `--platform linux/amd64\` to the docker run command in the `start.sh` file
 
 ## User management
 
