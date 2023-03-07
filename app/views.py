@@ -2,18 +2,23 @@
 
 Copyright 2022 3DGI <info@3dgi.nl>
 """
-import logging
-from pathlib import Path
 import json
+import logging
+from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from sys import getsizeof
+from typing import Optional, Tuple
 
-from flask import (abort, request, url_for, jsonify, g, render_template)
-from werkzeug.security import check_password_hash, generate_password_hash
-from werkzeug.exceptions import HTTPException
 import yaml
+from flask import abort, g, jsonify, render_template, request, url_for
+from werkzeug.exceptions import HTTPException
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from app import parser, index, db, app, auth, db_users
+from app import app, auth, db, db_users, index, parser
+
+DEFAULT_LIMIT = 10
+DEFAULT_OFFSET = 1
 
 # Populate featureID cache (get all identificatie:tile_id into memory
 conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
@@ -146,6 +151,38 @@ def verify_password(username, password):
     if existing_user.verify_password(password):
         return existing_user
 
+@dataclass
+class Parameters:
+    """ Class for holding feature parameters"""
+    offset: int
+    limit: int
+    bbox: Optional[Tuple[float, float, float, float]] = None
+
+
+def get_validated_parameters(request) -> Parameters:
+    for key in request.args.keys():
+        if key not in ["bbox", "offset", "limit"]:
+            logging.error("Unknown parameter %s", key)
+            abort(400)
+    try :
+        limit = int(request.args.get("limit", DEFAULT_LIMIT))
+        if limit < 0:
+            logging.error("Limit must be an positive integer.")
+            abort(400)
+        offset = int(request.args.get("offset", DEFAULT_OFFSET))
+        bbox=request.args.get("bbox", None)
+        if bbox is not None:
+            r = bbox.strip().strip("[]").split(',')
+            if len(r) != 4:
+                logging.error("BBox needs 4 parameters.")
+                abort(400)
+            bbox = tuple(list(map(float, r)))
+        return Parameters(offset=offset, limit=limit, bbox=bbox)
+    except ValueError as e:
+        logging.error("Invalid parameter value")
+        logging.error(e)
+        abort(400)
+
 
 def load_cityjsonfeature_meta(featureId):
     parent_id = parser.get_parent_id(featureId)
@@ -190,15 +227,12 @@ def load_cityjsonfeature(featureId):
             return json.load(fo, encoding='utf-8-sig')
 
 
-def get_paginated_features(features, url, offset, limit, bbox=None):
+def get_paginated_features(features, url: str, parameters: Parameters):
     """From https://stackoverflow.com/a/55546722"""
-    offset = int(offset)
-    limit = int(limit)
-    if bbox is None:
-        bbox = ""
+
+    if parameters.bbox is not None:
+        bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}"
     nr_matched = len(features)
-    if nr_matched < offset or limit < 0:
-        abort(404)
     # make response
     links = []
     obj = {"numberMatched": nr_matched}
@@ -206,42 +240,47 @@ def get_paginated_features(features, url, offset, limit, bbox=None):
     links.append({
         "href": request.url,
         "rel": "self",
-        "type": "application/city+json",
+        "type": "application/geo+json",
         "title": "this document"
     })
     url_prev = url_next = f"{url}?"
     # make previous URL
-    if offset > 1:
-        offset_copy = max(1, offset - limit)
-        limit_copy = offset - 1
+    if parameters.offset > 1:
+        offset_copy = max(1, parameters.offset - parameters.limit)
+        limit_copy = parameters.offset - 1
         ol = f"offset={offset_copy:d}&limit={limit_copy:d}"
-        if bbox == "":
+        if parameters.bbox is None:
             url_prev += ol
         else:
             url_prev += f"bbox={bbox}&" + ol
         links.append({
             "href": url_prev,
             "rel": "prev",
-            "type": "application/city+json",
+            "type": "application/geo+json",
         })
     # make next URL
-    if offset + limit < nr_matched:
-        offset_copy = offset + limit
-        ol = f"offset={offset_copy:d}&limit={limit:d}"
-        if bbox == "":
+    if parameters.offset + parameters.limit < nr_matched:
+        offset_copy = parameters.offset + parameters.limit
+        ol = f"offset={offset_copy:d}&limit={parameters.limit:d}"
+        if parameters.bbox is None:
             url_next += ol
         else:
             url_next += f"bbox={bbox}&" + ol
         links.append({
             "href": url_next,
             "rel": "next",
-            "type": "application/city+json",
+            "type": "application/geo+json",
         })
+    obj["type"] = 'FeatureCollection'
     obj["links"] = links
     # get features according to bounds
-    res = features[(offset - 1):(offset - 1 + limit)]
-    obj["numberReturned"] = len(res)
-    obj["features"] = [load_cityjsonfeature(featureId) for featureId in res]
+    if not all(features):
+        obj["numberReturned"] = 0
+        obj["features"] = []
+    else:
+        res = features[(parameters.offset - 1):(parameters.offset - 1 + parameters.limit)]
+        obj["numberReturned"] = len(res)
+        obj["features"] = [load_cityjsonfeature(featureId) for featureId in res]
     return obj
 
 
@@ -304,7 +343,6 @@ def conformance():
         "conformsTo": [
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
-            "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
             "https://www.cityjson.org/specs/1.1.1"
         ]
     }
@@ -323,7 +361,9 @@ def collections():
                 "type": "application/json",
                 "title": "this document"
             },
-        ]
+        ],
+        "crs": [
+            "http://www.opengis.net/def/crs/OGC/1.3/CRS84",            ]
     }
 
 
@@ -338,13 +378,13 @@ def pand():
             "spatial": {
                 "bbox": [
                     [
-                        10000,
-                        306250,
-                        287760,
-                        623690
+                        3.3336883863984554,
+                        50.72876521172199,
+                        7.268299980924518,
+                        53.57934599782919
                     ]
                 ],
-                "crs": "https://www.opengis.net/def/crs/EPSG/0/7415"
+                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
             },
             "temporal": {
                 "interval": [
@@ -355,7 +395,7 @@ def pand():
         },
         "itemType": "feature",
         "crs": [
-            "https://www.opengis.net/def/crs/EPSG/0/7415"
+            "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
         ],
         "transform": meta["transform"],
         "version": {
@@ -374,7 +414,7 @@ def pand():
             {
                 "href": url_for("pand_items", _external=True),
                 "rel": "items",
-                "type": "application/city+json",
+                "type": "application/geo+json",
                 "title": "Pand items"
             },
             {
@@ -396,25 +436,13 @@ def pand():
 @app.get('/collections/pand/items')
 @auth.login_required
 def pand_items():
-    query_params = dict(
-        bbox=request.args.get("bbox", None),
-        offset=request.args.get("offset", 1),
-        limit=request.args.get("limit", 10)
-    )
-    if query_params["bbox"] is not None:
-        r = query_params["bbox"].split(',')
-        if len(r) != 4:
-            abort(400)
-        try:
-            bbox = list(map(float, r))
-        except TypeError as e:
-            logging.debug(e)
-            abort(400)
+    query_params = get_validated_parameters(request)
+    if query_params.bbox is not None:
         # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
-        logging.debug(f"query with bbox {bbox}")
+        logging.debug(f"Query with bbox {query_params.bbox}")
         # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
         conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
-        feature_subset = bbox_cache.get(conn, bbox)
+        feature_subset = bbox_cache.get(conn, query_params.bbox)
         conn.conn.close()
     else:
         conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
@@ -422,38 +450,38 @@ def pand_items():
         conn.conn.close()
     return jsonify(get_paginated_features(feature_subset,
                                           url_for("pand_items", _external=True),
-                                          **query_params))
+                                          query_params))
 
 
 @app.get('/collections/pand/items/<featureId>')
 @auth.login_required
 def get_feature(featureId):
-    logging.debug(f"requesting {featureId}")
+    logging.debug(f"Requesting {featureId}")
     cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
         {
             "href": request.url,
             "rel": "self",
-            "type": "application/city+json",
+            "type": "application/geo+json",
             "title": "this document"
         },
         {
             "href": url_for("pand", _external=True),
             "rel": "collection",
-            "type": "application/city+json"
+            "type": "application/geo+json"
         },
         {
             "href": f'{url_for("pand", _external=True)}/items/{cityjsonfeature["id"]}',
             "rel": "parent",
-            "type": "application/city+json"
+            "type": "application/geo+json"
         },
     ]
     for coid in cityjsonfeature["CityObjects"][cityjsonfeature["id"]]["children"]:
         links.append({
             "href": f'{url_for("pand", _external=True)}/items/{coid}',
             "rel": "child",
-            "type": "application/city+json"
+            "type": "application/geo+json"
         })
 
     return jsonify({

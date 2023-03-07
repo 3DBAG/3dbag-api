@@ -8,9 +8,8 @@ from pathlib import Path
 import json
 import logging
 
-
 from shapely.strtree import STRtree
-from shapely.geometry import box, shape
+from shapely.geometry import shape
 from shapely import speedups
 speedups.enable()
 logging.info(f"shapely speedups enabled: {speedups.available}")
@@ -22,7 +21,7 @@ class BBOXCache:
     If a new BBOX is requested then query the index, store the feature subset in the
     cache and return the feature subset.
 
-    If the previously reqested BBOX is requested again, return the feature subset from
+    If the previously requested BBOX is requested again, return the feature subset from
     the cache.
     """
 
@@ -38,13 +37,13 @@ class BBOXCache:
         """Get the featureIDs in the `bbox`. BBOX comparison is string comparison of
         the coordinate values that are formatted to three decimal places.
         """
-        # We exepect that at this point we have a valid 'bbox', as in a tuple of
-        # four floats
+        # We expect that at this point we have a valid 'bbox', 
+        # as in a list of four floats.
         bbox_new = tuple(map("{:.3f}".format, bbox))
         if bbox_new == self.bbox:
             return self.feature_subset
         else:
-            self.add(features_in_bbox(conn, bbox_new), bbox_new)
+            self.add(features_in_bbox(conn, bbox), bbox_new)
             return self.feature_subset
 
     def clear(self):
