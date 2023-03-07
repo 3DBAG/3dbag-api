@@ -4,10 +4,9 @@
 
 To run the server locally or to start a development server, you need data. 
 Test data is available [here](https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz).
+Download it somewhere in your home directory. 
 
 ```bash
-mkdir $HOME/data
-cd $HOME/data
 curl https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz | tar -xz
 ```
 
@@ -15,7 +14,7 @@ The modify the links in configuration file  3dbag_api_setting_local.cfg to point
 
 ## Run Locally:
 
-You first need to install [poetry](https://python-poetry.org/docs/) and enable the creating of vitual env. within the project:
+You first need to install [poetry](https://python-poetry.org/docs/) and enable the generation of vitual environments within a project:
 
 ```bash
   poetry config virtualenvs.in-project true
