@@ -11,7 +11,9 @@ from sys import getsizeof
 from typing import Optional, Tuple
 
 import yaml
-from flask import abort, g, jsonify, render_template, request, url_for
+from flask import (abort, g, jsonify, make_response, render_template, request,
+                   Request, url_for)
+from pyproj import Proj, exceptions, transform
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -19,6 +21,10 @@ from app import app, auth, db, db_users, index, parser
 
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
+
+DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/28992"
+GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS ]
 
 # Populate featureID cache (get all identificatie:tile_id into memory
 conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
@@ -156,14 +162,27 @@ class Parameters:
     """ Class for holding feature parameters"""
     offset: int
     limit: int
+    crs: str
+    bbox_crs: str
     bbox: Optional[Tuple[float, float, float, float]] = None
 
 
-def get_validated_parameters(request) -> Parameters:
+def get_validated_parameters(request: Request) -> Parameters:
+    """ Returns the validated query parameters. 
+    IN case of in invalid parameters of parameter values 
+    an exception with 400 status code is raised """
     for key in request.args.keys():
-        if key not in ["bbox", "offset", "limit"]:
+        if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
             logging.error("Unknown parameter %s", key)
             abort(400)
+    crs = request.args.get("crs", DEFAULT_CRS)
+    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS)
+    if crs not in GLOBAL_LIST_CRS:
+        logging.error("Unknown crs %s", crs)
+        abort(400)
+    if bbox_crs not in GLOBAL_LIST_CRS:
+        logging.error("Unknown bbox-crs %s", bbox_crs)
+        abort(400)
     try :
         limit = int(request.args.get("limit", DEFAULT_LIMIT))
         if limit < 0:
@@ -177,11 +196,28 @@ def get_validated_parameters(request) -> Parameters:
                 logging.error("BBox needs 4 parameters.")
                 abort(400)
             bbox = tuple(list(map(float, r)))
-        return Parameters(offset=offset, limit=limit, bbox=bbox)
-    except ValueError as e:
+        return Parameters(offset=offset, limit=limit, bbox=bbox, crs=crs, bbox_crs =bbox_crs)
+    except ValueError as error:
         logging.error("Invalid parameter value")
-        logging.error(e)
+        logging.error(error)
         abort(400)
+
+
+def from_WGS84_to_dutchCRS(x: float, y: float)-> Tuple[float, float]:
+    """ Transform a point from WGS84 to the Dutch Coordinate system (28992)"""
+    return  transform(p1=Proj(init='epsg:4326'),
+                      p2=Proj(init='epsg:28992'),
+                      x=x,
+                      y=y,
+                      errcheck=True)
+
+def from_dutchCRS_to_WGS84(x: float, y: float)-> Tuple[float, float]:
+    """ Transform a point from the Dutch Coordinate system (28992) to WGS84"""
+    return  transform(p1=Proj(init='epsg:28992'),
+                      p2=Proj(init='epsg:4326'),
+                      x=x,
+                      y=y,
+                      errcheck=True)
 
 
 def load_cityjsonfeature_meta(featureId):
@@ -343,6 +379,7 @@ def conformance():
         "conformsTo": [
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+            "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
             "https://www.cityjson.org/specs/1.1.1"
         ]
     }
@@ -363,7 +400,9 @@ def collections():
             },
         ],
         "crs": [
-            "http://www.opengis.net/def/crs/OGC/1.3/CRS84",            ]
+            DEFAULT_CRS,
+            STORAGE_CRS
+            ]
     }
 
 
@@ -378,13 +417,13 @@ def pand():
             "spatial": {
                 "bbox": [
                     [
-                        3.3336883863984554,
-                        50.72876521172199,
-                        7.268299980924518,
-                        53.57934599782919
+                        3.3335406283191253,
+                        50.72794948839276,
+                        7.391791169364946,
+                        53.58254841348389
                     ]
                 ],
-                "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+                "crs": DEFAULT_CRS
             },
             "temporal": {
                 "interval": [
@@ -394,9 +433,11 @@ def pand():
             }
         },
         "itemType": "feature",
-        "crs": [
-            "http://www.opengis.net/def/crs/OGC/1.3/CRS84",
-        ],
+        "crs":[
+                DEFAULT_CRS,
+                STORAGE_CRS
+            ],
+        "storageCrs": STORAGE_CRS,
         "transform": meta["transform"],
         "version": {
             "cityjson": meta["version"],
@@ -433,30 +474,48 @@ def pand():
     }
 
 
+def transform_bbox(bbox: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
+    x1, y1 = from_WGS84_to_dutchCRS(bbox[0], bbox[1])
+    x2, y2 = from_WGS84_to_dutchCRS(bbox[2], bbox[3])
+    return (x1, y1, x2, y2)
+
+
 @app.get('/collections/pand/items')
-@auth.login_required
+# @auth.login_required
 def pand_items():
     query_params = get_validated_parameters(request)
+    conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
     if query_params.bbox is not None:
-        # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
-        logging.debug(f"Query with bbox {query_params.bbox}")
-        # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
-        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
-        feature_subset = bbox_cache.get(conn, query_params.bbox)
-        conn.conn.close()
+        bbox = query_params.bbox
+        try :
+            if query_params.bbox_crs == DEFAULT_CRS:
+                bbox = transform_bbox(bbox)
+            # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
+            logging.debug(f"Query with bbox {bbox}")
+            # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
+            feature_subset = bbox_cache.get(conn, bbox)
+        except exceptions.ProjError as e:
+            logging.warning(f"Projection Error")
+            logging.warning(e)
+            feature_subset = ()
     else:
-        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
         feature_subset = FEATURE_IDS
-        conn.conn.close()
-    return jsonify(get_paginated_features(feature_subset,
+    conn.conn.close()
+    response = make_response(jsonify(get_paginated_features(feature_subset,
                                           url_for("pand_items", _external=True),
-                                          query_params))
+                                          query_params)), 200)
+    response.headers["Content-Crs"] = f"<{query_params.crs}>"
+
+    return response
 
 
 @app.get('/collections/pand/items/<featureId>')
-@auth.login_required
+# @auth.login_required
 def get_feature(featureId):
-    logging.debug(f"Requesting {featureId}")
+    crs = request.args.get("crs", DEFAULT_CRS)
+    if crs not in GLOBAL_LIST_CRS:
+        logging.error("Unknown crs %s", crs)
+        abort(400)
     cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
@@ -483,17 +542,19 @@ def get_feature(featureId):
             "rel": "child",
             "type": "application/geo+json"
         })
-
-    return jsonify({
+    response = make_response(jsonify({
         "id": cityjsonfeature["id"],
         "feature": cityjsonfeature,
         "links": links
-    })
+    }), 200)
+    response.headers["Content-Crs"] = f"<{crs}>"
+
+    return response
 
 
 
 @app.get('/collections/pand/items/<featureId>/addresses')
-@auth.login_required
+# @auth.login_required
 def get_addresses(featureId):
     logging.debug(f"requesting {featureId} addresses")
     parent_id = parser.get_parent_id(featureId)
@@ -534,7 +595,7 @@ def get_addresses(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/surfaces')
-@auth.login_required
+# @auth.login_required
 def get_surfaces(featureId):
     logging.debug(f"requesting {featureId} surfaces")
     parent_id = parser.get_parent_id(featureId)
@@ -578,7 +639,7 @@ def get_surfaces(featureId):
 
 
 @app.route("/register", methods=["GET", "POST"])
-@auth.login_required(role=Permission.ADMINISTRATOR)
+# @auth.login_required(role=Permission.ADMINISTRATOR)
 def register():
     user = UserAuth(**request.json)
     db_users.session.add(user)
