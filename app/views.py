@@ -481,7 +481,7 @@ def transform_bbox(bbox: Tuple[float, float, float, float]) -> Tuple[float, floa
 
 
 @app.get('/collections/pand/items')
-# @auth.login_required
+@auth.login_required
 def pand_items():
     query_params = get_validated_parameters(request)
     conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
@@ -510,7 +510,7 @@ def pand_items():
 
 
 @app.get('/collections/pand/items/<featureId>')
-# @auth.login_required
+@auth.login_required
 def get_feature(featureId):
     crs = request.args.get("crs", DEFAULT_CRS)
     if crs not in GLOBAL_LIST_CRS:
@@ -554,7 +554,7 @@ def get_feature(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/addresses')
-# @auth.login_required
+@auth.login_required
 def get_addresses(featureId):
     logging.debug(f"requesting {featureId} addresses")
     parent_id = parser.get_parent_id(featureId)
@@ -595,7 +595,7 @@ def get_addresses(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/surfaces')
-# @auth.login_required
+@auth.login_required
 def get_surfaces(featureId):
     logging.debug(f"requesting {featureId} surfaces")
     parent_id = parser.get_parent_id(featureId)
@@ -639,7 +639,7 @@ def get_surfaces(featureId):
 
 
 @app.route("/register", methods=["GET", "POST"])
-# @auth.login_required(role=Permission.ADMINISTRATOR)
+@auth.login_required(role=Permission.ADMINISTRATOR)
 def register():
     user = UserAuth(**request.json)
     db_users.session.add(user)
