@@ -219,6 +219,11 @@ def from_dutchCRS_to_WGS84(x: float, y: float)-> Tuple[float, float]:
                       y=y,
                       errcheck=True)
 
+def transform_bbox(bbox: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
+    x1, y1 = from_WGS84_to_dutchCRS(bbox[0], bbox[1])
+    x2, y2 = from_WGS84_to_dutchCRS(bbox[2], bbox[3])
+    return (x1, y1, x2, y2)
+
 
 def load_cityjsonfeature_meta(featureId):
     parent_id = parser.get_parent_id(featureId)
@@ -473,11 +478,6 @@ def pand():
         ]
     }
 
-
-def transform_bbox(bbox: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
-    x1, y1 = from_WGS84_to_dutchCRS(bbox[0], bbox[1])
-    x2, y2 = from_WGS84_to_dutchCRS(bbox[2], bbox[3])
-    return (x1, y1, x2, y2)
 
 
 @app.get('/collections/pand/items')
