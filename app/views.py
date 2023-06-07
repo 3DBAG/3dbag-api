@@ -22,9 +22,12 @@ from app import app, auth, db, db_users, index, parser
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
 
-DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
-STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/28992"
-GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS ]
+DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/0/CRS84h"
+STORAGE_CRS = "https://www.opengis.net/def/crs/EPSG/0/7415"
+DEFAULT_CRS_2D = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+STORAGE_CRS_2D = "http://www.opengis.net/def/crs/EPSG/0/28992"
+
+GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS, DEFAULT_CRS_2D, STORAGE_CRS_2D]
 
 # Populate featureID cache (get all identificatie:tile_id into memory
 conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
@@ -169,14 +172,14 @@ class Parameters:
 
 def get_validated_parameters(request: Request) -> Parameters:
     """ Returns the validated query parameters. 
-    IN case of in invalid parameters of parameter values 
+    In case of invalid parameters of parameter values 
     an exception with 400 status code is raised """
     for key in request.args.keys():
         if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
             logging.error("Unknown parameter %s", key)
             abort(400)
     crs = request.args.get("crs", DEFAULT_CRS)
-    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS)
+    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS_2D)
     if crs not in GLOBAL_LIST_CRS:
         logging.error("Unknown crs %s", crs)
         abort(400)
@@ -214,7 +217,7 @@ def from_WGS84_to_dutchCRS(x: float, y: float)-> Tuple[float, float]:
 def from_dutchCRS_to_WGS84(x: float, y: float)-> Tuple[float, float]:
     """ Transform a point from the Dutch Coordinate system (28992) to WGS84"""
     return  transform(p1=Proj(init='epsg:28992'),
-                      p2=Proj(init='epsg:4326'),
+                      p2=Proj(init='OGC:CRS84'),
                       x=x,
                       y=y,
                       errcheck=True)
@@ -406,7 +409,9 @@ def collections():
         ],
         "crs": [
             DEFAULT_CRS,
-            STORAGE_CRS
+            STORAGE_CRS,
+            DEFAULT_CRS_2D,
+            STORAGE_CRS_2D
             ]
     }
 
@@ -428,7 +433,7 @@ def pand():
                         53.58254841348389
                     ]
                 ],
-                "crs": DEFAULT_CRS
+                "crs": DEFAULT_CRS_2D
             },
             "temporal": {
                 "interval": [
@@ -481,14 +486,14 @@ def pand():
 
 
 @app.get('/collections/pand/items')
-@auth.login_required
+#@auth.login_required
 def pand_items():
     query_params = get_validated_parameters(request)
     conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
     if query_params.bbox is not None:
         bbox = query_params.bbox
         try :
-            if query_params.bbox_crs == DEFAULT_CRS:
+            if query_params.bbox_crs == DEFAULT_CRS_2D:
                 bbox = transform_bbox(bbox)
             # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
             logging.debug(f"Query with bbox {bbox}")
@@ -510,7 +515,7 @@ def pand_items():
 
 
 @app.get('/collections/pand/items/<featureId>')
-@auth.login_required
+#@auth.login_required
 def get_feature(featureId):
     crs = request.args.get("crs", DEFAULT_CRS)
     if crs not in GLOBAL_LIST_CRS:
@@ -554,7 +559,7 @@ def get_feature(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/addresses')
-@auth.login_required
+#@auth.login_required
 def get_addresses(featureId):
     logging.debug(f"requesting {featureId} addresses")
     parent_id = parser.get_parent_id(featureId)
@@ -595,7 +600,7 @@ def get_addresses(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/surfaces')
-@auth.login_required
+#@auth.login_required
 def get_surfaces(featureId):
     logging.debug(f"requesting {featureId} surfaces")
     parent_id = parser.get_parent_id(featureId)
@@ -639,7 +644,7 @@ def get_surfaces(featureId):
 
 
 @app.route("/register", methods=["GET", "POST"])
-@auth.login_required(role=Permission.ADMINISTRATOR)
+#@auth.login_required(role=Permission.ADMINISTRATOR)
 def register():
     user = UserAuth(**request.json)
     db_users.session.add(user)
