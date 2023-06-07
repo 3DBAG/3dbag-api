@@ -38,7 +38,7 @@ class BBOXCache:
         the coordinate values that are formatted to three decimal places.
         """
         # We expect that at this point we have a valid 'bbox', 
-        # as in a list of four floats.
+        # as in a tuple of four floats.
         bbox_new = tuple(map("{:.3f}".format, bbox))
         if bbox_new == self.bbox:
             return self.feature_subset
