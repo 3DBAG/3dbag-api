@@ -205,7 +205,7 @@ def get_validated_parameters(request: Request) -> Parameters:
 
 def from_WGS84_to_dutchCRS(x: float, y: float)-> Tuple[float, float]:
     """ Transform a point from WGS84 to the Dutch Coordinate system (28992)"""
-    return  transform(p1=Proj(init='epsg:4326'),
+    return  transform(p1=Proj(init='OGC:CRS84'),
                       p2=Proj(init='epsg:28992'),
                       x=x,
                       y=y,
