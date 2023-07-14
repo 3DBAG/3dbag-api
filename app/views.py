@@ -5,7 +5,6 @@ Copyright 2022 3DGI <info@3dgi.nl>
 import json
 import logging
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from sys import getsizeof
 from typing import Optional, Tuple
@@ -13,11 +12,14 @@ from typing import Optional, Tuple
 import yaml
 from flask import (abort, g, jsonify, make_response, render_template, request,
                    Request, url_for)
-from pyproj import Proj, exceptions, transform
+from pyproj import exceptions
 from werkzeug.exceptions import HTTPException
-from werkzeug.security import check_password_hash, generate_password_hash
+
 
 from app import app, auth, db, db_users, index, parser
+from app.transformations import (transform_bbox_from_default_to_storage,
+                                 transform_bbox_from_storage_to_default)
+from app.authentication import UserAuth, Permission
 
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
@@ -30,7 +32,7 @@ STORAGE_CRS_2D = "http://www.opengis.net/def/crs/EPSG/0/28992"
 GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS, DEFAULT_CRS_2D, STORAGE_CRS_2D]
 
 # Populate featureID cache (get all identificatie:tile_id into memory
-conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
+conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
 FEATURE_IDX = parser.feature_index(conn) # feature index of (featureId : tile_id)
 conn.conn.close()
 logging.debug(f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
@@ -106,60 +108,6 @@ def auth_error(status):
     return jsonify(error), status
 
 
-class Permission(Enum):
-    USER = 1
-    ADMINISTRATOR = 16
-
-
-class UserAuth(db_users.Model):
-    __tablename__ = "userauth"
-
-    id = db_users.Column(db_users.Integer, primary_key=True)
-    username = db_users.Column(db_users.String(80), unique=True, nullable=False)
-    # TODO: We should probably generate the API keys with os.urandom(24) as per https://realpython.com/token-based-authentication-with-flask/
-    password_hash = db_users.Column(db_users.String(128), nullable=False)
-    role = db_users.Column(db_users.Enum(Permission))
-
-    def __init__(self, username, password, role=Permission.USER):
-        self.username = username
-        # TODO: require at least 12 mixed character long passwords from the user
-        self.password = password
-        self.role = role
-
-    def __repr__(self):
-        return '<User %r>' % self.username
-
-    @property
-    def password(self):
-        raise AttributeError('password is not a readable attribute')
-
-    @password.setter
-    def password(self, password):
-        self.password_hash = generate_password_hash(password, method="pbkdf2:sha256:320000")
-
-    def verify_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-    def get_roles(self):
-        return self.role
-
-
-@auth.get_user_roles
-def get_user_roles(user):
-    return user.get_roles()
-
-
-@auth.verify_password
-def verify_password(username, password):
-    if username == "":
-        return None
-    existing_user = UserAuth.query.filter_by(username=username).first()
-    if not existing_user:
-        return None
-    g.current_user = username
-    if existing_user.verify_password(password):
-        return existing_user
-
 @dataclass
 class Parameters:
     """ Class for holding feature parameters"""
@@ -181,6 +129,7 @@ def get_validated_parameters(request: Request) -> Parameters:
     crs = request.args.get("crs", DEFAULT_CRS)
     bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS_2D)
     if crs not in GLOBAL_LIST_CRS:
+        # TODO: Error that gives the available CRSs.
         logging.error("Unknown crs %s", crs)
         abort(400)
     if bbox_crs not in GLOBAL_LIST_CRS:
@@ -204,28 +153,6 @@ def get_validated_parameters(request: Request) -> Parameters:
         logging.error("Invalid parameter value")
         logging.error(error)
         abort(400)
-
-
-def from_WGS84_to_dutchCRS(x: float, y: float)-> Tuple[float, float]:
-    """ Transform a point from WGS84 to the Dutch Coordinate system (28992)"""
-    return  transform(p1=Proj(init='OGC:CRS84'),
-                      p2=Proj(init='epsg:28992'),
-                      x=x,
-                      y=y,
-                      errcheck=True)
-
-def from_dutchCRS_to_WGS84(x: float, y: float)-> Tuple[float, float]:
-    """ Transform a point from the Dutch Coordinate system (28992) to WGS84"""
-    return  transform(p1=Proj(init='epsg:28992'),
-                      p2=Proj(init='OGC:CRS84'),
-                      x=x,
-                      y=y,
-                      errcheck=True)
-
-def transform_bbox(bbox: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
-    x1, y1 = from_WGS84_to_dutchCRS(bbox[0], bbox[1])
-    x2, y2 = from_WGS84_to_dutchCRS(bbox[2], bbox[3])
-    return (x1, y1, x2, y2)
 
 
 def load_cityjsonfeature_meta(featureId):
@@ -484,25 +411,37 @@ def pand():
     }
 
 
-
 @app.get('/collections/pand/items')
 # @auth.login_required
 def pand_items():
     query_params = get_validated_parameters(request)
-    conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
+    # Connect to the DB with the desited CRS 
+    if query_params.crs == STORAGE_CRS:
+        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
+    else:
+        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_DEFAULT"])
+
     if query_params.bbox is not None:
-        bbox = query_params.bbox
-        try :
-            if query_params.bbox_crs == DEFAULT_CRS_2D:
-                bbox = transform_bbox(bbox)
+        #bbox = query_params.bbox
+        try:
+            # convert the bbox_crs to the requested crs
+            logging.debug(f"Input bbox {query_params.bbox}")
+            if query_params.bbox_crs == DEFAULT_CRS_2D \
+               and query_params.crs == STORAGE_CRS:
+                query_params.bbox = \
+                    transform_bbox_from_default_to_storage(query_params.bbox)
+            elif query_params.bbox_crs == STORAGE_CRS_2D \
+                    and query_params.crs == DEFAULT_CRS:
+                query_params.bbox = \
+                    transform_bbox_from_storage_to_default(query_params.bbox)
+            logging.debug(f"Transformed bbox {query_params.bbox}")
             # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
-            logging.debug(f"Query with bbox {bbox}")
+            
             # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
-            feature_subset = bbox_cache.get(conn, bbox)
+            feature_subset = bbox_cache.get(conn, query_params.bbox)
         except exceptions.ProjError as e:
-            logging.warning(f"Projection Error")
-            logging.warning(e)
-            feature_subset = ()
+            logging.error(f"Projection Error: {e}")
+            abort(400)
     else:
         feature_subset = FEATURE_IDS
     conn.conn.close()
@@ -644,7 +583,7 @@ def get_surfaces(featureId):
 
 
 @app.route("/register", methods=["GET", "POST"])
-#@auth.login_required(role=Permission.ADMINISTRATOR)
+# @auth.login_required(role=Permission.ADMINISTRATOR)
 def register():
     user = UserAuth(**request.json)
     db_users.session.add(user)
