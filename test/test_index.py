@@ -40,21 +40,21 @@ def test_bbox_within_tile():
     # tiles_matched = [tiles_shapely[id(tile)][1] for tile in tree.query(bbox)]
 
 def test_features_in_bbox(app):
-    DB = Db(dbfile=app.config.get("FEATURE_INDEX_GPKG"))
+    DB = Db(dbfile=app.config.get("FEATURE_INDEX_GPKG_STORAGE"))
     bbox = (68194.423, 395606.054, 68608.839, 396076.441)
     feature_subset = features_in_bbox(DB, bbox)
     print(len(feature_subset))
     DB.conn.close()
 
 def test_features_in_bbox_large(app):
-    DB = Db(dbfile=app.config.get("FEATURE_INDEX_GPKG"))
+    DB = Db(dbfile=app.config.get("FEATURE_INDEX_GPKG_STORAGE"))
     bbox = (77797.577,450905.086,85494.901,456719.503)
     feature_subset = features_in_bbox(DB, bbox)
     print(len(feature_subset))
     DB.conn.close()
 
 def test_features_in_bbox_verylarge(app):
-    DB = Db(dbfile=app.config.get("FEATURE_INDEX_GPKG"))
+    DB = Db(dbfile=app.config.get("FEATURE_INDEX_GPKG_STORAGE"))
     bbox = (75877.011,446130.034,92446.593,460259.369)
     feature_subset = features_in_bbox(DB, bbox)
     print(len(feature_subset))

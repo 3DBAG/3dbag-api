@@ -6,7 +6,7 @@ from app import app
 
 def test_feature_index():
     """Load and return the feature index."""
-    conn = Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
+    conn = Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
     fi = feature_index(conn)
     assert len(fi) > 1
 
