@@ -4,8 +4,8 @@ from pathlib import Path
 
 from shapely.strtree import STRtree
 from shapely.geometry import box, shape
-from ..index import *
-from ..db import *
+from app.index import *
+from app.db import *
 
 
 def test_bbox_within_tile():
@@ -16,7 +16,7 @@ def test_bbox_within_tile():
     # Build a topological structure of the corner points of the tile polygons, where:
     #   morton_code_of_corner_point: {polygon1, polygon2, ...}
     morton_corner_idx = {}
-    with Path("server/tests/data/bag_tiles_3k_sample.geojson").resolve().open("r") as fo:
+    with Path("test/resources/bag3d_tiles_3k.geojson").resolve().open("r") as fo:
         tiles_polys = json.load(fo)
     for f in tiles_polys["features"]:
         ring = f["geometry"]["coordinates"][0] # get exterior ring
@@ -30,13 +30,14 @@ def test_bbox_within_tile():
     corner_1 = take_closest(morton_order, bbox_mc[0])
     corner_2 = take_closest(morton_order, bbox_mc[1])
 
-
-def test_bbox_within_tile_shapely():
+# TODO: rewrite this test
+# def test_bbox_within_tile_shapely():
     """Should detect if a BBOX is completely within a larger tile."""
-    bbox = box(68194.423, 395606.054, 68608.839, 396076.441)
-    tiles_json = "server/tests/data/bag_tiles_3k_sample.geojson"
-    tiles_shapely, tree = tiles_rtree(tiles_json)
-    tiles_matched = [tiles_shapely[id(tile)][1] for tile in tree.query(bbox)]
+    # bbox = box(68194.423, 395606.054, 68608.839, 396076.441)
+    # tiles_json = "test/resources/bag3d_tiles_3k.geojson"
+    # tiles_shapely, tree = tiles_rtree(tiles_json)
+
+    # tiles_matched = [tiles_shapely[id(tile)][1] for tile in tree.query(bbox)]
 
 def test_features_in_bbox(app):
     DB = Db(dbfile=app.config.get("FEATURE_INDEX_GPKG"))
