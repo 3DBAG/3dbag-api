@@ -2,6 +2,7 @@
 from app import db_users, auth
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask import g
 
 
 class Permission(Enum):
@@ -13,14 +14,17 @@ class UserAuth(db_users.Model):
     __tablename__ = "userauth"
 
     id = db_users.Column(db_users.Integer, primary_key=True)
-    username = db_users.Column(db_users.String(80), unique=True, nullable=False)
-    # TODO: We should probably generate the API keys with os.urandom(24) as per https://realpython.com/token-based-authentication-with-flask/
+    username = db_users.Column(db_users.String(80),
+                               unique=True,
+                               nullable=False)
+    # TODO: We should probably generate the API keys with os.urandom(24)
+    # as per https://realpython.com/token-based-authentication-with-flask/
     password_hash = db_users.Column(db_users.String(128), nullable=False)
     role = db_users.Column(db_users.Enum(Permission))
 
     def __init__(self, username, password, role=Permission.USER):
         self.username = username
-        # TODO: require at least 12 mixed character long passwords from the user
+        # TODO: require at least 12 mixed character long password
         self.password = password
         self.role = role
 
@@ -33,7 +37,9 @@ class UserAuth(db_users.Model):
 
     @password.setter
     def password(self, password):
-        self.password_hash = generate_password_hash(password, method="pbkdf2:sha256:320000")
+        self.password_hash = generate_password_hash(
+            password,
+            method="pbkdf2:sha256:320000")
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)

@@ -10,7 +10,7 @@ from sys import getsizeof
 from typing import Optional, Tuple
 
 import yaml
-from flask import (abort, g, jsonify, make_response, render_template, request,
+from flask import (abort, jsonify, make_response, render_template, request,
                    Request, url_for)
 from pyproj import exceptions
 from werkzeug.exceptions import HTTPException

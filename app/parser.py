@@ -28,7 +28,8 @@ def feature_index(conn):
 
 
 def find_surfaces_csv_path(data_base_dir, tile_id):
-    """Return the file path of the CSV file containing the surfaces record for tile_id.
+    """Return the file path of the CSV file containing the surfaces
+    record for tile_id.
 
     :returns: Absolute path to CSV file.
     """
@@ -37,7 +38,8 @@ def find_surfaces_csv_path(data_base_dir, tile_id):
 
 
 def find_addresses_csv_path(data_base_dir, tile_id):
-    """Return the file path of the CSV file containing the addresses record for tile_id.
+    """Return the file path of the CSV file containing the
+    addresses record for tile_id.
 
     :returns: Absolute path to CSV file.
     """
@@ -52,12 +54,12 @@ def find_co_path(data_base_dir, featureId, tile_id):
 
 def find_tile_meta_path(data_base_dir, tile_id):
     base = Path(data_base_dir).resolve()
-    return base / "tiles" / tile_id / f"meta.json"
+    return base / "tiles" / tile_id / "meta.json"
 
 
 def find_meta_path(data_base_dir):
     base = Path(data_base_dir).resolve()
-    return base / f"meta.json"
+    return base / "meta.json"
 
 
 def parse_surfaces_csv(path: Path):
