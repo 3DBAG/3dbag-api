@@ -34,7 +34,7 @@ def find_surfaces_csv_path(data_base_dir, tile_id):
     :returns: Absolute path to CSV file.
     """
     base = Path(data_base_dir).resolve()
-    return base / "tiles" / tile_id / f"{tile_id}_lod2_surface_areas.csv"
+    return base / f"{tile_id}_lod2_surface_areas.csv"
 
 
 def find_addresses_csv_path(data_base_dir, tile_id):
@@ -44,7 +44,7 @@ def find_addresses_csv_path(data_base_dir, tile_id):
     :returns: Absolute path to CSV file.
     """
     base = Path(data_base_dir).resolve()
-    return base / "tiles" / tile_id / f"{tile_id}_lod2_surface_areas_addr.csv"
+    return base / f"{tile_id}_lod2_surface_areas_addr.csv"
 
 
 def find_co_path(data_base_dir, featureId, tile_id):

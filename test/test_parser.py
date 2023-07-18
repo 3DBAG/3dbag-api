@@ -1,7 +1,8 @@
 from pprint import pprint
-from app.parser import *
+from app.parser import (feature_index, parse_surfaces_csv, get_feature_record, find_co_path)
 from app.db import Db
 from app import app
+from pathlib import Path
 
 
 def test_feature_index():
@@ -26,4 +27,3 @@ def test_get_feature_surfaces():
 def test_find_co_path():
     res = find_co_path("/data", "NL.IMBAG.Pand.1655100000548671", "997")
     print(res)
-

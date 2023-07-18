@@ -1,4 +1,5 @@
 from app import views
+from pathlib import Path
 
 
 class TestDev:
@@ -51,7 +52,8 @@ class TestDev:
 
     def test_load_cityjsonfeature(self):
         feature_id = "NL.IMBAG.Pand.1655100000548444"
-        promise = views.load_cityjsonfeature(feature_id)
+        data_base_dir = Path('/Users/gina/data/3DBAGplus/storage/')
+        promise = views.load_cityjsonfeature(feature_id, data_base_dir)
         assert feature_id in dict(promise)["CityObjects"]
 
 

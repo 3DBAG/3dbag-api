@@ -24,10 +24,10 @@ from app.authentication import UserAuth, Permission
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
 
-DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/0/CRS84h"
-STORAGE_CRS = "https://www.opengis.net/def/crs/EPSG/0/7415"
+DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/1.3/CRS84h"
+STORAGE_CRS = "http://www.opengis.net/def/crs/epsg/0/7415"
 DEFAULT_CRS_2D = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
-STORAGE_CRS_2D = "http://www.opengis.net/def/crs/EPSG/0/28992"
+STORAGE_CRS_2D = "http://www.opengis.net/def/crs/epsg/0/28992"
 
 GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS, DEFAULT_CRS_2D, STORAGE_CRS_2D]
 
@@ -155,14 +155,14 @@ def get_validated_parameters(request: Request) -> Parameters:
         abort(400)
 
 
-def load_cityjsonfeature_meta(featureId):
+def load_cityjsonfeature_meta(featureId, data_base_dir):
     parent_id = parser.get_parent_id(featureId)
     tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
     if tile_id is None:
         logging.debug(f"featureId {parent_id} not found in feature_index")
         abort(404)
 
-    json_path = parser.find_tile_meta_path(app.config["DATA_BASE_DIR"], tile_id)
+    json_path = parser.find_tile_meta_path(data_base_dir, tile_id)
     if not json_path.exists():
         logging.debug(f"CityJSON metadata file {json_path} not found ")
         abort(404)
@@ -181,7 +181,7 @@ def load_cityjson_meta():
             return json.load(fo)
 
 
-def load_cityjsonfeature(featureId):
+def load_cityjsonfeature(featureId, data_base_dir):
     """Loads a single feature."""
     parent_id = parser.get_parent_id(featureId)
     tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
@@ -189,7 +189,7 @@ def load_cityjsonfeature(featureId):
         logging.debug(f"featureId {parent_id} not found in feature_index")
         abort(404)
 
-    json_path = parser.find_co_path(app.config["DATA_BASE_DIR"], parent_id, tile_id)
+    json_path = parser.find_co_path(data_base_dir, parent_id, tile_id)
     if not json_path.exists():
         logging.debug(f"CityJSON file {json_path} not found ")
         abort(404)
@@ -200,6 +200,10 @@ def load_cityjsonfeature(featureId):
 
 def get_paginated_features(features, url: str, parameters: Parameters):
     """From https://stackoverflow.com/a/55546722"""
+    if parameters.crs == DEFAULT_CRS:
+        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'default'
+    else:
+        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
 
     if parameters.bbox is not None:
         bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}"
@@ -251,7 +255,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
     else:
         res = features[(parameters.offset - 1):(parameters.offset - 1 + parameters.limit)]
         obj["numberReturned"] = len(res)
-        obj["features"] = [load_cityjsonfeature(featureId) for featureId in res]
+        obj["features"] = [load_cityjsonfeature(featureId, data_base_dir) for featureId in res]
     return obj
 
 
@@ -339,7 +343,7 @@ def collections():
             STORAGE_CRS,
             DEFAULT_CRS_2D,
             STORAGE_CRS_2D
-            ]
+        ]
     }
 
 
@@ -370,10 +374,10 @@ def pand():
             }
         },
         "itemType": "feature",
-        "crs":[
-                DEFAULT_CRS,
-                STORAGE_CRS
-            ],
+        "crs": [
+            DEFAULT_CRS,
+            STORAGE_CRS
+        ],
         "storageCrs": STORAGE_CRS,
         "transform": meta["transform"],
         "version": {
@@ -415,7 +419,7 @@ def pand():
 # @auth.login_required
 def pand_items():
     query_params = get_validated_parameters(request)
-    # Connect to the DB with the desited CRS 
+    # Connect to the DB with the desired CRS
     if query_params.crs == STORAGE_CRS:
         conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
     else:
@@ -425,16 +429,18 @@ def pand_items():
         #bbox = query_params.bbox
         try:
             # convert the bbox_crs to the requested crs
-            logging.debug(f"Input bbox {query_params.bbox}")
+            logging.debug(f"Input bbox {query_params.bbox} in {query_params.bbox_crs}")
             if query_params.bbox_crs == DEFAULT_CRS_2D \
                and query_params.crs == STORAGE_CRS:
                 query_params.bbox = \
                     transform_bbox_from_default_to_storage(query_params.bbox)
+                query_params.bbox_crs = STORAGE_CRS_2D
             elif query_params.bbox_crs == STORAGE_CRS_2D \
                     and query_params.crs == DEFAULT_CRS:
                 query_params.bbox = \
                     transform_bbox_from_storage_to_default(query_params.bbox)
-            logging.debug(f"Transformed bbox {query_params.bbox}")
+                query_params.bbox_crs = DEFAULT_CRS_2D
+            logging.debug(f"Transformed bbox {query_params.bbox} in {query_params.bbox_crs}")
             # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
             
             # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
@@ -457,10 +463,14 @@ def pand_items():
 #@auth.login_required
 def get_feature(featureId):
     crs = request.args.get("crs", DEFAULT_CRS)
+    if crs == DEFAULT_CRS:
+        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'default'
+    else:
+        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
     if crs not in GLOBAL_LIST_CRS:
         logging.error("Unknown crs %s", crs)
         abort(400)
-    cityjsonfeature = load_cityjsonfeature(featureId)
+    cityjsonfeature = load_cityjsonfeature(featureId, data_base_dir)
 
     links = [
         {
