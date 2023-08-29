@@ -14,7 +14,7 @@ def test_bbox_within_tile():
     # where: morton_code_of_corner_point: {polygon1, polygon2, ...}
     morton_corner_idx = {}
     with Path(
-        "test/resources/bag3d_tiles_3k.geojson"
+        "test/resources/bag3d_tiles_den_haag_delft.geojson"
     ).resolve().open("r") as fo:
         tiles_polys = json.load(fo)
     for f in tiles_polys["features"]:
@@ -28,14 +28,14 @@ def test_bbox_within_tile():
     morton_order = sorted(morton_corner_idx)
     corner_1 = take_closest(morton_order, bbox_mc[0])
     corner_2 = take_closest(morton_order, bbox_mc[1])
-    assert corner_1 == 2312060372957312
-    assert corner_2 == 2312134711819392
+    assert corner_1 == 2423659334998144
+    assert corner_2 == 2423659334998144
 
 # TODO: rewrite this test
 # def test_bbox_within_tile_shapely():
     """Should detect if a BBOX is completely within a larger tile."""
     # bbox = box(68194.423, 395606.054, 68608.839, 396076.441)
-    # tiles_json = "test/resources/bag3d_tiles_3k.geojson"
+    # tiles_json = "test/resources/bag3d_tiles_den_haag_delft.geojson"
     # tiles_shapely, tree = tiles_rtree(tiles_json)
 
     # tiles_matched = [tiles_shapely[id(tile)][1] for tile in tree.query(bbox)]
