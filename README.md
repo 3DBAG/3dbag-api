@@ -163,6 +163,11 @@ docker run \
   -p 8081:8080 \
   ogccite/ets-ogcapi-features10
 ```
+Extract requirements file:
+
+```
+poetry export -f requirements.txt -o requirements.txt --without-hashes
+```
 
 Start the 3D BAG API service (from start.sh)
 
@@ -176,6 +181,12 @@ docker run \
   -e APP_CONFIG="/app/3dbag_api_settings.cfg" \
   -v /data/3DBAGplus:/data/3DBAGplus \
   -v "$(pwd)":/app ${server}
+```
+
+or simply:
+
+```
+sh ./start.sh
 ```
 
 Create a new bridge network where we can connect the two containers
