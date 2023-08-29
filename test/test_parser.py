@@ -1,8 +1,10 @@
-from pprint import pprint
-from app.parser import (feature_index, parse_surfaces_csv, get_feature_record, find_co_path)
-from app.db import Db
-from app import app
 from pathlib import Path
+from pprint import pprint
+
+from app import app
+from app.db import Db
+from app.parser import (feature_index, find_co_path, get_feature_record,
+                        parse_surfaces_csv)
 
 
 def test_feature_index():
