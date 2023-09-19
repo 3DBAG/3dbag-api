@@ -9,6 +9,7 @@ from pathlib import Path
 from sys import getsizeof
 from typing import Optional, Tuple
 
+# import cjdb
 import yaml
 from flask import (abort, jsonify, make_response, render_template, request,
                    Request, url_for)
@@ -19,7 +20,7 @@ from werkzeug.exceptions import HTTPException
 from app import app, auth, db, db_users, index, parser
 from app.transformations import (transform_bbox_from_default_to_storage,
                                  transform_bbox_from_storage_to_default)
-from app.authentication import UserAuth, Permission
+from app.authentication import UserAuth  # , Permission
 
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
@@ -31,12 +32,23 @@ GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS]
 
 # Populate featureID cache (get all identificatie:tile_id into memory
 conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
-FEATURE_IDX = parser.feature_index(conn) # feature index of (featureId : tile_id)
+# feature index of (featureId : tile_id)
+FEATURE_IDX = parser.feature_index(conn)
 conn.conn.close()
-logging.debug(f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
-FEATURE_IDS = tuple(FEATURE_IDX.keys()) # featureID container
+logging.debug(
+    f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
+# featureID container
+FEATURE_IDS = tuple(FEATURE_IDX.keys())
 # Init empty BBOX cache of featureIDs
 bbox_cache = index.BBOXCache()
+
+# with cjdb.Exporter(
+#         connection=conn,
+#         schema="cjdb",
+#         sqlquery=None,
+#         output="./tests/files/ex.jsonl",
+#     ) as exporter:
+#         stream = exporter.get_stream()
 
 
 @app.errorhandler(HTTPException)
@@ -74,9 +86,9 @@ def auth_error(status):
             code=status,
             name="Unauthorized",
             description=(
-                "The request requires user authentication. The response includes a "
-                "WWW-Authenticate header field containing a challenge applicable to "
-                "the requested resource."
+                "The request requires user authentication. The response "
+                "includes a WWW-Authenticate header field containing a "
+                "challenge applicable to the requested resource."
             )
         )
     elif status == 403:
@@ -84,16 +96,16 @@ def auth_error(status):
             code=status,
             name="Forbidden",
             description=(
-                "The server understood the request, but is refusing to fulfil it. "
-                "While status code 401 indicates missing or bad authentication, status "
-                "code 403 indicates that authentication is not the issue, but the "
-                "client is not authorized to perform the requested operation on the "
-                "resource."
+                "The server understood the request, but is refusing to fulfil "
+                "it. Status code 403 indicates that authentication is not the "
+                "issue, but the client is not authorized to perform the "
+                "requested operation on the resource."
             )
         )
     else:
         logging.error(
-            "Flask-HTTPAuth error_handler is handling an error that is not 401 or 403.")
+            "Flask-HTTPAuth error_handler is handling an error "
+            "that is not 401 or 403.")
         error = dict(
             code=500,
             name="Internal Server Error",
@@ -134,20 +146,24 @@ def get_validated_parameters(request: Request) -> Parameters:
     if bbox_crs not in global_list_lower:
         logging.error("Unknown bbox-crs %s", bbox_crs)
         abort(400)
-    try :
+    try:
         limit = int(request.args.get("limit", DEFAULT_LIMIT))
         if limit < 0:
             logging.error("Limit must be an positive integer.")
             abort(400)
         offset = int(request.args.get("offset", DEFAULT_OFFSET))
-        bbox=request.args.get("bbox", None)
+        bbox = request.args.get("bbox", None)
         if bbox is not None:
             r = bbox.strip().strip("[]").split(',')
             if len(r) != 4:
                 logging.error("BBox needs 4 parameters.")
                 abort(400)
             bbox = tuple(list(map(float, r)))
-        return Parameters(offset=offset, limit=limit, bbox=bbox, crs=crs, bbox_crs =bbox_crs)
+        return Parameters(offset=offset,
+                          limit=limit,
+                          bbox=bbox,
+                          crs=crs,
+                          bbox_crs=bbox_crs)
     except ValueError as error:
         logging.error("Invalid parameter value")
         logging.error(error)
@@ -205,7 +221,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
         data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
 
     if parameters.bbox is not None:
-        bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}"
+        bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}" # noqa
     nr_matched = len(features)
     # make response
     links = []
@@ -252,9 +268,13 @@ def get_paginated_features(features, url: str, parameters: Parameters):
         obj["numberReturned"] = 0
         obj["features"] = []
     else:
-        res = features[(parameters.offset - 1):(parameters.offset - 1 + parameters.limit)]
+        res = features[
+            (parameters.offset - 1):(
+                parameters.offset - 1 + parameters.limit)]
         obj["numberReturned"] = len(res)
-        obj["features"] = [load_cityjsonfeature(featureId, data_base_dir) for featureId in res]
+        obj["features"] = [
+            load_cityjsonfeature(
+                featureId, data_base_dir) for featureId in res]
     return obj
 
 
@@ -262,7 +282,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
 def landing_page():
     return {
         "title": "3D BAG plus",
-        "description": "3D BAG plus is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.",
+        "description": "3D BAG plus is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.", # noqa
         "links": [
             {
                 "href": request.url,
@@ -286,7 +306,7 @@ def landing_page():
                 "href": url_for("conformance", _external=True),
                 "rel": "conformance",
                 "type": "application/json",
-                "title": "OGC API conformance classes implemented by this server"
+                "title": "OGC API conformance classes implemented by this server" # noqa
             },
             {
                 "href": url_for("collections", _external=True),
@@ -419,26 +439,32 @@ def pand_items():
     # Connect to the DB with the desired CRS
     if query_params.crs.lower() == STORAGE_CRS.lower():
         query_params.crs = STORAGE_CRS
-        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
+        conn = db.Db()
     elif query_params.crs.lower() == DEFAULT_CRS.lower():
         query_params.crs = DEFAULT_CRS
         conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_DEFAULT"])
     else:
-        logging.error("Unknown crs %s. Must be either %s or %s", crs, DEFAULT_CRS, STORAGE_CRS)
+        logging.error(
+            "Unknown crs %s. Must be either %s or %s",
+            query_params.crs,
+            DEFAULT_CRS,
+            STORAGE_CRS)
         abort(400)
 
-
     if query_params.bbox is not None:
-        #bbox = query_params.bbox
         try:
             # convert the bbox_crs to the requested crs
-            logging.debug(f"Input bbox {query_params.bbox} in {query_params.bbox_crs} and with crs: {query_params.crs}")
+            logging.debug(
+                "Input bbox %s in %s and with crs: %s",
+                query_params.bbox,
+                query_params.bbox_crs,
+                query_params.crs)
             if query_params.bbox_crs.lower() == DEFAULT_CRS.lower() \
                and query_params.crs.lower() == STORAGE_CRS.lower():
                 logging.debug("Transforming bbox from default to storage CRS")
                 query_params.bbox = \
                     transform_bbox_from_default_to_storage(query_params.bbox)
-                
+
                 query_params.bbox_crs = STORAGE_CRS
             elif query_params.bbox_crs.lower() == STORAGE_CRS.lower() \
                     and query_params.crs.lower() == DEFAULT_CRS.lower():
@@ -446,10 +472,13 @@ def pand_items():
                 query_params.bbox = \
                     transform_bbox_from_storage_to_default(query_params.bbox)
                 query_params.bbox_crs = DEFAULT_CRS
-            logging.debug(f"Transformed bbox: {query_params.bbox} now in {query_params.bbox_crs}")
-            # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
-            
-            # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
+            logging.debug(
+                f"Transformed bbox: {query_params.bbox}")
+            # tiles_matches = [TILES_SHAPELY[id(tile)][1]
+            # for tile in TILES_RTREE.query(bbox)]
+
+            # TODO OPTIMIZE: use a connection pool instead of connecting each
+            # time. DB connection is very expensive.
             feature_subset = bbox_cache.get(conn, query_params.bbox)
         except exceptions.ProjError as e:
             logging.error(f"Projection Error: {e}")
@@ -457,16 +486,17 @@ def pand_items():
     else:
         feature_subset = FEATURE_IDS
     conn.conn.close()
-    response = make_response(jsonify(get_paginated_features(feature_subset,
-                                          url_for("pand_items", _external=True),
-                                          query_params)), 200)
+    response = make_response(jsonify(get_paginated_features(
+        feature_subset,
+        url_for("pand_items", _external=True),
+        query_params)), 200)
     response.headers["Content-Crs"] = f"<{query_params.crs}>"
 
     return response
 
 
 @app.get('/collections/pand/items/<featureId>')
-#@auth.login_required
+# @auth.login_required
 def get_feature(featureId):
     crs = request.args.get("crs", DEFAULT_CRS)
     if crs.lower() == DEFAULT_CRS.lower():
@@ -476,7 +506,11 @@ def get_feature(featureId):
         crs = STORAGE_CRS
         data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
     else:
-        logging.error("Unknown crs %s. Must be either %s or %s", crs, DEFAULT_CRS, STORAGE_CRS)
+        logging.error(
+            "Unknown crs %s. Must be either %s or %s",
+            crs,
+            DEFAULT_CRS,
+            STORAGE_CRS)
         abort(400)
     cityjsonfeature = load_cityjsonfeature(featureId, data_base_dir)
 
@@ -493,12 +527,12 @@ def get_feature(featureId):
             "type": "application/json"
         },
         {
-            "href": f'{url_for("pand", _external=True)}/items/{cityjsonfeature["id"]}',
+            "href": f'{url_for("pand", _external=True)}/items/{cityjsonfeature["id"]}',# noqa
             "rel": "parent",
             "type": "application/city+json"
         },
     ]
-    for coid in cityjsonfeature["CityObjects"][cityjsonfeature["id"]]["children"]:
+    for coid in cityjsonfeature["CityObjects"][cityjsonfeature["id"]]["children"]: # noqa
         links.append({
             "href": f'{url_for("pand", _external=True)}/items/{coid}',
             "rel": "child",
@@ -514,9 +548,8 @@ def get_feature(featureId):
     return response
 
 
-
 @app.get('/collections/pand/items/<featureId>/addresses')
-#@auth.login_required
+# @auth.login_required
 def get_addresses(featureId):
     logging.debug(f"requesting {featureId} addresses")
     parent_id = parser.get_parent_id(featureId)
@@ -526,17 +559,21 @@ def get_addresses(featureId):
         abort(404)
 
     try:
-        csv_path = parser.find_addresses_csv_path(app.config["DATA_BASE_DIR"], tile_id)
+        csv_path = parser.find_addresses_csv_path(
+            app.config["DATA_BASE_DIR"], tile_id)
         addresses_gen = parser.parse_addresses_csv(csv_path)
-        # FIXME: here we need the BAG identifiactie, but for the surfaces records we need the 3D BAG building part identificatie
-        # FIXME: a bag feature can have multiple childern in the 3d bag, thus we needto  return an array of children
+        # FIXME: here we need the BAG identifiactie, but for the surfaces
+        # records we need the 3D BAG building part identificatie
+        # FIXME: a bag feature can have multiple children in the 3d bag,
+        # thus we need to  return an array of children
         addresses_record = parser.get_feature_record(parent_id, addresses_gen)
     except BaseException as e:
         logging.exception(e)
         abort(500)
 
     if addresses_record is None:
-        logging.debug(f"featureId {featureId} not found in the addresses records")
+        logging.debug(
+            f"featureId {featureId} not found in the addresses records")
         abort(404)
 
     addresses_record["links"] = [
@@ -557,7 +594,7 @@ def get_addresses(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/surfaces')
-#@auth.login_required
+# @auth.login_required
 def get_surfaces(featureId):
     logging.debug(f"requesting {featureId} surfaces")
     parent_id = parser.get_parent_id(featureId)
@@ -567,10 +604,13 @@ def get_surfaces(featureId):
         abort(404)
 
     try:
-        csv_path = parser.find_surfaces_csv_path(app.config["DATA_BASE_DIR"], tile_id)
+        csv_path = parser.find_surfaces_csv_path(
+            app.config["DATA_BASE_DIR"], tile_id)
         surfaces_gen = parser.parse_surfaces_csv(csv_path)
-        # FIXME: a bag feature can have multiple childern in the 3d bag, thus we needto  return an array of children
-        # FIXME: we are querying with parent_ids in the api, not with children-ids, how make this work neatly?
+        # FIXME: a bag feature can have multiple children in the 3d bag,
+        # thus we need to  return an array of children
+        # FIXME: we are querying with parent_ids in the api,
+        # not with children-ids, how make this work neatly?
         if featureId.find("-") < 0:
             # we have a parent_id, but we need a child-id, so let's make one...
             featureId += "-0"
@@ -580,7 +620,8 @@ def get_surfaces(featureId):
         abort(500)
 
     if surfaces_record is None:
-        logging.debug(f"featureId {featureId} not found in the surfaces records")
+        logging.debug(
+            f"featureId {featureId} not found in the surfaces records")
         abort(404)
 
     surfaces_record["links"] = [
