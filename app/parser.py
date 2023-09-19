@@ -7,9 +7,9 @@ from pathlib import Path
 
 
 def get_parent_id(featureId):
-    # Get the ID of the parent feature if it is a BuildinPart,
-    # like NL.IMBAG.Pand.1655100000488643-0, because the feature_index only
-    # contains the parent IDs.
+    # Get the ID of the parent feature if it is a BuildingPart,
+    # like NL.IMBAG.Pand.1655100000488643-0, because the feature_index
+    # onl contains the parent IDs.
     return featureId.rsplit("-")[0]
 
 

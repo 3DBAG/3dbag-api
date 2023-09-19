@@ -9,7 +9,6 @@ from pathlib import Path
 from sys import getsizeof
 from typing import Optional, Tuple
 
-# import cjdb
 import yaml
 from flask import (abort, jsonify, make_response, render_template, request,
                    Request, url_for)
@@ -41,14 +40,6 @@ logging.debug(
 FEATURE_IDS = tuple(FEATURE_IDX.keys())
 # Init empty BBOX cache of featureIDs
 bbox_cache = index.BBOXCache()
-
-# with cjdb.Exporter(
-#         connection=conn,
-#         schema="cjdb",
-#         sqlquery=None,
-#         output="./tests/files/ex.jsonl",
-#     ) as exporter:
-#         stream = exporter.get_stream()
 
 
 @app.errorhandler(HTTPException)
