@@ -397,7 +397,7 @@ def pand():
             {
                 "href": url_for("pand_items", _external=True),
                 "rel": "items",
-                "type": "application/json",
+                "type": "application/geo+json",
                 "title": "Pand items"
             },
             {
