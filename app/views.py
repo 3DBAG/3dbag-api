@@ -26,10 +26,8 @@ DEFAULT_OFFSET = 1
 
 DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/0/CRS84h"
 STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/7415"
-DEFAULT_CRS_2D = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
-STORAGE_CRS_2D = "http://www.opengis.net/def/crs/EPSG/0/28992"
 
-GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS, DEFAULT_CRS_2D, STORAGE_CRS_2D]
+GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS]
 
 # Populate featureID cache (get all identificatie:tile_id into memory
 conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
@@ -127,7 +125,7 @@ def get_validated_parameters(request: Request) -> Parameters:
             logging.error("Unknown parameter %s", key)
             abort(400)
     crs = request.args.get("crs", DEFAULT_CRS).lower()
-    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS_2D).lower()
+    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS).lower()
     global_list_lower = [x.lower() for x in GLOBAL_LIST_CRS]
     if crs not in global_list_lower:
         # TODO: Error that gives the available CRSs.
@@ -341,9 +339,7 @@ def collections():
         ],
         "crs": [
             DEFAULT_CRS,
-            STORAGE_CRS,
-            DEFAULT_CRS_2D,
-            STORAGE_CRS_2D
+            STORAGE_CRS
         ]
     }
 
@@ -365,7 +361,7 @@ def pand():
                         53.58254841348389
                     ]
                 ],
-                "crs": DEFAULT_CRS_2D
+                "crs": DEFAULT_CRS
             },
             "temporal": {
                 "interval": [
@@ -437,20 +433,20 @@ def pand_items():
         try:
             # convert the bbox_crs to the requested crs
             logging.debug(f"Input bbox {query_params.bbox} in {query_params.bbox_crs} and with crs: {query_params.crs}")
-            if query_params.bbox_crs.lower() == DEFAULT_CRS_2D.lower() \
+            if query_params.bbox_crs.lower() == DEFAULT_CRS.lower() \
                and query_params.crs.lower() == STORAGE_CRS.lower():
-                logging.debug("transform_bbox_from_default_to_storage")
+                logging.debug("Transforming bbox from default to storage CRS")
                 query_params.bbox = \
                     transform_bbox_from_default_to_storage(query_params.bbox)
                 
-                query_params.bbox_crs = STORAGE_CRS_2D
-            elif query_params.bbox_crs.lower() == STORAGE_CRS_2D.lower() \
+                query_params.bbox_crs = STORAGE_CRS
+            elif query_params.bbox_crs.lower() == STORAGE_CRS.lower() \
                     and query_params.crs.lower() == DEFAULT_CRS.lower():
-                logging.debug("transform_bbox_from_storage_to_default")
+                logging.debug("Transforming bbox from storage to default CRS")
                 query_params.bbox = \
                     transform_bbox_from_storage_to_default(query_params.bbox)
-                query_params.bbox_crs = DEFAULT_CRS_2D
-            logging.debug(f"Transformed bbox {query_params.bbox} to {query_params.bbox_crs}")
+                query_params.bbox_crs = DEFAULT_CRS
+            logging.debug(f"Transformed bbox: {query_params.bbox} now in {query_params.bbox_crs}")
             # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
             
             # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
