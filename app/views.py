@@ -24,10 +24,10 @@ from app.authentication import UserAuth, Permission
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
 
-DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/1.3/CRS84h"
-STORAGE_CRS = "http://www.opengis.net/def/crs/epsg/0/7415"
+DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/0/CRS84h"
+STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/7415"
 DEFAULT_CRS_2D = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
-STORAGE_CRS_2D = "http://www.opengis.net/def/crs/epsg/0/28992"
+STORAGE_CRS_2D = "http://www.opengis.net/def/crs/EPSG/0/28992"
 
 GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS, DEFAULT_CRS_2D, STORAGE_CRS_2D]
 
@@ -126,13 +126,14 @@ def get_validated_parameters(request: Request) -> Parameters:
         if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
             logging.error("Unknown parameter %s", key)
             abort(400)
-    crs = request.args.get("crs", DEFAULT_CRS)
-    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS_2D)
-    if crs not in GLOBAL_LIST_CRS:
+    crs = request.args.get("crs", DEFAULT_CRS).lower()
+    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS_2D).lower()
+    global_list_lower = [x.lower() for x in GLOBAL_LIST_CRS]
+    if crs not in global_list_lower:
         # TODO: Error that gives the available CRSs.
         logging.error("Unknown crs %s", crs)
         abort(400)
-    if bbox_crs not in GLOBAL_LIST_CRS:
+    if bbox_crs not in global_list_lower:
         logging.error("Unknown bbox-crs %s", bbox_crs)
         abort(400)
     try :
@@ -215,7 +216,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
     links.append({
         "href": request.url,
         "rel": "self",
-        "type": "application/geo+json",
+        "type": "application/city+json",
         "title": "this document"
     })
     url_prev = url_next = f"{url}?"
@@ -231,7 +232,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
         links.append({
             "href": url_prev,
             "rel": "prev",
-            "type": "application/geo+json",
+            "type": "application/city+json",
         })
     # make next URL
     if parameters.offset + parameters.limit < nr_matched:
@@ -244,7 +245,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
         links.append({
             "href": url_next,
             "rel": "next",
-            "type": "application/geo+json",
+            "type": "application/city+json",
         })
     obj["type"] = 'FeatureCollection'
     obj["links"] = links
@@ -396,7 +397,7 @@ def pand():
             {
                 "href": url_for("pand_items", _external=True),
                 "rel": "items",
-                "type": "application/geo+json",
+                "type": "application/json",
                 "title": "Pand items"
             },
             {
@@ -420,27 +421,36 @@ def pand():
 def pand_items():
     query_params = get_validated_parameters(request)
     # Connect to the DB with the desired CRS
-    if query_params.crs == STORAGE_CRS:
+    if query_params.crs.lower() == STORAGE_CRS.lower():
+        query_params.crs = STORAGE_CRS
         conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
-    else:
+    elif query_params.crs.lower() == DEFAULT_CRS.lower():
+        query_params.crs = DEFAULT_CRS
         conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_DEFAULT"])
+    else:
+        logging.error("Unknown crs %s. Must be either %s or %s", crs, DEFAULT_CRS, STORAGE_CRS)
+        abort(400)
+
 
     if query_params.bbox is not None:
         #bbox = query_params.bbox
         try:
             # convert the bbox_crs to the requested crs
-            logging.debug(f"Input bbox {query_params.bbox} in {query_params.bbox_crs}")
-            if query_params.bbox_crs == DEFAULT_CRS_2D \
-               and query_params.crs == STORAGE_CRS:
+            logging.debug(f"Input bbox {query_params.bbox} in {query_params.bbox_crs} and with crs: {query_params.crs}")
+            if query_params.bbox_crs.lower() == DEFAULT_CRS_2D.lower() \
+               and query_params.crs.lower() == STORAGE_CRS.lower():
+                logging.debug("transform_bbox_from_default_to_storage")
                 query_params.bbox = \
                     transform_bbox_from_default_to_storage(query_params.bbox)
+                
                 query_params.bbox_crs = STORAGE_CRS_2D
-            elif query_params.bbox_crs == STORAGE_CRS_2D \
-                    and query_params.crs == DEFAULT_CRS:
+            elif query_params.bbox_crs.lower() == STORAGE_CRS_2D.lower() \
+                    and query_params.crs.lower() == DEFAULT_CRS.lower():
+                logging.debug("transform_bbox_from_storage_to_default")
                 query_params.bbox = \
                     transform_bbox_from_storage_to_default(query_params.bbox)
                 query_params.bbox_crs = DEFAULT_CRS_2D
-            logging.debug(f"Transformed bbox {query_params.bbox} in {query_params.bbox_crs}")
+            logging.debug(f"Transformed bbox {query_params.bbox} to {query_params.bbox_crs}")
             # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
             
             # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
@@ -463,12 +473,14 @@ def pand_items():
 #@auth.login_required
 def get_feature(featureId):
     crs = request.args.get("crs", DEFAULT_CRS)
-    if crs == DEFAULT_CRS:
+    if crs.lower() == DEFAULT_CRS.lower():
+        crs = DEFAULT_CRS
         data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'default'
-    else:
+    elif crs.lower() == STORAGE_CRS.lower():
+        crs = STORAGE_CRS
         data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
-    if crs not in GLOBAL_LIST_CRS:
-        logging.error("Unknown crs %s", crs)
+    else:
+        logging.error("Unknown crs %s. Must be either %s or %s", crs, DEFAULT_CRS, STORAGE_CRS)
         abort(400)
     cityjsonfeature = load_cityjsonfeature(featureId, data_base_dir)
 
@@ -476,25 +488,25 @@ def get_feature(featureId):
         {
             "href": request.url,
             "rel": "self",
-            "type": "application/geo+json",
+            "type": "application/json",
             "title": "this document"
         },
         {
             "href": url_for("pand", _external=True),
             "rel": "collection",
-            "type": "application/geo+json"
+            "type": "application/json"
         },
         {
             "href": f'{url_for("pand", _external=True)}/items/{cityjsonfeature["id"]}',
             "rel": "parent",
-            "type": "application/geo+json"
+            "type": "application/city+json"
         },
     ]
     for coid in cityjsonfeature["CityObjects"][cityjsonfeature["id"]]["children"]:
         links.append({
             "href": f'{url_for("pand", _external=True)}/items/{coid}',
             "rel": "child",
-            "type": "application/geo+json"
+            "type": "application/city+json"
         })
     response = make_response(jsonify({
         "id": cityjsonfeature["id"],
