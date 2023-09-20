@@ -20,6 +20,7 @@ from app import app, auth, db, db_users, index, parser
 from app.transformations import (transform_bbox_from_default_to_storage,
                                  transform_bbox_from_storage_to_default)
 from app.authentication import UserAuth  # , Permission
+from cjdb.modules.exporter import Exporter
 
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
@@ -30,14 +31,14 @@ STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/7415"
 GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS]
 
 # Populate featureID cache (get all identificatie:tile_id into memory
-conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
+# conn = db.Db()
 # feature index of (featureId : tile_id)
-FEATURE_IDX = parser.feature_index(conn)
-conn.conn.close()
-logging.debug(
-    f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
-# featureID container
-FEATURE_IDS = tuple(FEATURE_IDX.keys())
+# FEATURE_IDX = parser.feature_index(conn)
+# conn.conn.close()
+# logging.debug(
+#     f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
+# # featureID container
+# FEATURE_IDS = tuple(FEATURE_IDX.keys())
 # Init empty BBOX cache of featureIDs
 bbox_cache = index.BBOXCache()
 
@@ -161,20 +162,20 @@ def get_validated_parameters(request: Request) -> Parameters:
         abort(400)
 
 
-def load_cityjsonfeature_meta(featureId, data_base_dir):
-    parent_id = parser.get_parent_id(featureId)
-    tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
-    if tile_id is None:
-        logging.debug(f"featureId {parent_id} not found in feature_index")
-        abort(404)
+# def load_cityjsonfeature_meta(featureId, data_base_dir):
+#     parent_id = parser.get_parent_id(featureId)
+#     tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
+#     if tile_id is None:
+#         logging.debug(f"featureId {parent_id} not found in feature_index")
+#         abort(404)
 
-    json_path = parser.find_tile_meta_path(data_base_dir, tile_id)
-    if not json_path.exists():
-        logging.debug(f"CityJSON metadata file {json_path} not found ")
-        abort(404)
-    else:
-        with json_path.open("r") as fo:
-            return json.load(fo)
+#     json_path = parser.find_tile_meta_path(data_base_dir, tile_id)
+#     if not json_path.exists():
+#         logging.debug(f"CityJSON metadata file {json_path} not found ")
+#         abort(404)
+#     else:
+#         with json_path.open("r") as fo:
+#             return json.load(fo)
 
 
 def load_cityjson_meta():
@@ -187,29 +188,29 @@ def load_cityjson_meta():
             return json.load(fo)
 
 
-def load_cityjsonfeature(featureId, data_base_dir):
+def load_cityjsonfeature(featureId) -> str:
     """Loads a single feature."""
-    parent_id = parser.get_parent_id(featureId)
-    tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
-    if tile_id is None:
-        logging.debug(f"featureId {parent_id} not found in feature_index")
-        abort(404)
+    connection = db.Db()
+    with Exporter(
+        connection=connection.conn,
+        schema="cjdb",
+        sqlquery=f"SELECT '{featureId}' as object_id",
+        output=None,
+    ) as exporter:
+        stream = exporter.get_stream()
+    logging.info(stream.getvalue())
+    json.loads(stream.getvalue())
+    # TODO problem here is that the stream has multiple json (because it is jsonl)
+    return stream
 
-    json_path = parser.find_co_path(data_base_dir, parent_id, tile_id)
-    if not json_path.exists():
-        logging.debug(f"CityJSON file {json_path} not found ")
-        abort(404)
-    else:
-        with json_path.open("r") as fo:
-            return json.load(fo)
 
 
 def get_paginated_features(features, url: str, parameters: Parameters):
     """From https://stackoverflow.com/a/55546722"""
-    if parameters.crs == DEFAULT_CRS:
-        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'default'
-    else:
-        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
+    # if parameters.crs == DEFAULT_CRS:
+    #     data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'default'
+    # else:
+    #     data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
 
     if parameters.bbox is not None:
         bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}" # noqa
@@ -265,7 +266,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
         obj["numberReturned"] = len(res)
         obj["features"] = [
             load_cityjsonfeature(
-                featureId, data_base_dir) for featureId in res]
+                featureId) for featureId in res]
     return obj
 
 
@@ -476,12 +477,13 @@ def pand_items():
             abort(400)
     else:
         feature_subset = FEATURE_IDS
-    conn.conn.close()
+    
     response = make_response(jsonify(get_paginated_features(
         feature_subset,
-        url_for("pand_items", _external=True),
+        url_for("pand_items", _external=True), conn,
         query_params)), 200)
     response.headers["Content-Crs"] = f"<{query_params.crs}>"
+    #conn.conn.close()
 
     return response
 
@@ -503,7 +505,7 @@ def get_feature(featureId):
             DEFAULT_CRS,
             STORAGE_CRS)
         abort(400)
-    cityjsonfeature = load_cityjsonfeature(featureId, data_base_dir)
+    cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
         {

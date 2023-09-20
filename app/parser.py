@@ -23,7 +23,10 @@ def get_tile_id(parent_id, feature_index):
 
 def feature_index(conn):
     """Returns the feature-tile index of the 3D BAG."""
-    query = "SELECT identificatie, tile_id FROM bag_index"
+    query = """SELECT co.object_id, cm.id
+               FROM cjdb.cj_metadata cm
+               JOIN cjdb.city_object co
+               ON co.cj_metadata_id = cm.id"""
     return dict((k, v) for k, v in conn.get_query(query))
 
 

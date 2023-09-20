@@ -16,6 +16,7 @@ def get_connection() -> connection:
         ~/.pg_service.conf named as `baseregisters_godzilla`
     '''
     try:
+        print("Connecting to Godzilla DB")
         conn = pg.connect('service=baseregisters_godzilla')
         conn.set_session(isolation_level="READ COMMITTED")
     except pg.OperationalError as e:
