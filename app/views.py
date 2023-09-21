@@ -234,7 +234,7 @@ def landing_page():
 @app.get('/api')
 def api():
     rdir = Path(app.root_path).parent / "schemas"
-    with (rdir / "3dbagplus_spec.yaml").open("r") as fo:
+    with (rdir / "3dbagapi_spec.yaml").open("r") as fo:
         f = yaml.full_load(fo)
     return jsonify(f)
 
@@ -452,7 +452,6 @@ def get_feature(featureId):
     response.headers["Content-Crs"] = f"<{query_params.crs}>"
 
     return response
-
 
 
 @app.route("/register", methods=["GET", "POST"])
