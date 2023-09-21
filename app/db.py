@@ -6,7 +6,6 @@ Copyright 2022 3DGI <info@3dgi.nl>
 import logging
 import sqlite3
 import psycopg2 as pg
-# from psycopg2 import OperationalError
 from psycopg2.extensions import connection
 
 
