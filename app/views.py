@@ -194,8 +194,8 @@ def get_paginated_features(features, url: str, parameters: Parameters):
 @app.get('/')
 def landing_page():
     return {
-        "title": "3D BAG plus",
-        "description": "3D BAG plus is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.", # noqa
+        "title": "3DBAG API",
+        "description": "3DBAG is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.", # noqa
         "links": [
             {
                 "href": request.url,
@@ -283,7 +283,7 @@ def pand():
     return {
         "id": "Pand",
         "title": "Pand",
-        "description": "The 3D BAG Pand Layer.",
+        "description": "3D building models based on the 'pand' layer of the BAG data set.",
         "extent": {
             "spatial": {
                 "bbox": [
