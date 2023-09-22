@@ -6,7 +6,7 @@ authors = ["Gina Stavropoulou <gina@Ginas-MacBook-Pro.local>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.8.1"
 cjio = "^0.8.1"
 Flask = "^2.2.3"
 Flask-HTTPAuth = "^4.7.0"
@@ -15,6 +15,7 @@ Flask-SQLAlchemy = "^3.0.3"
 shapely = "^2.0.1"
 pyproj = "^3.4.1"
 psycopg2 = "^2.9.7"
+cjdb = { git = "https://github.com/cityjson/cjdb.git", branch = "fix-export" }
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
