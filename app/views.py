@@ -6,7 +6,6 @@ import json
 import logging
 from pathlib import Path
 
-import requests
 import yaml
 from cjdb.modules.exporter import Exporter
 from flask import (abort, jsonify, make_response, render_template,
@@ -22,8 +21,6 @@ from app.transformations import (transform_bbox_from_default_to_storage,
 
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 1
-
-GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS]
 
 bbox_cache = index.BBOXCache()
 
@@ -109,13 +106,6 @@ def load_cityjsonfeature_meta(featureId, connection):
     return metadata
 
 
-def load_cityjson_meta():
-    response = json.loads(
-        requests.get(
-            "https://data.3dbag.nl/metadata/v20230809/metadata.json").text)
-    return response
-
-
 def load_cityjsonfeature(featureId, connection) -> str:
     """Loads a single feature."""
     with Exporter(
@@ -126,7 +116,6 @@ def load_cityjsonfeature(featureId, connection) -> str:
     ) as exporter:
         exporter.get_data()
         feature = exporter.get_features()
-        logging.info(type(feature[0]))
     return json.loads(feature[0])
 
 
@@ -279,7 +268,6 @@ def collections():
 
 @app.get('/collections/pand')
 def pand():
-    meta = load_cityjson_meta()
     return {
         "id": "Pand",
         "title": "Pand",
@@ -310,7 +298,7 @@ def pand():
         ],
         "storageCrs": STORAGE_CRS,
         "version": {
-            "collection": meta["identificationInfo"]['citation']["edition"],
+            "collection": "v2023.08.09",
             "api": "0.1"
         },
         "links": [
@@ -347,9 +335,9 @@ def pand():
 def pand_items():
     for key in request.args.keys():
         if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
-            error = "Unknown parameter %s", key
-            logging.error(error)
-            abort(400, error)
+            error_msg = "Unknown parameter %s", key
+            logging.error(error_msg)
+            abort(400, error_msg)
 
     query_params = Parameters(
         offset=int(request.args.get("offset", DEFAULT_OFFSET)),
@@ -387,9 +375,9 @@ def pand_items():
             # time. DB connection is very expensive.
             feature_subset = bbox_cache.get(conn, query_params.bbox)
         except exceptions.ProjError as e:
-            error = f"Projection Error: {e}"
-            logging.error(error)
-            abort(400, error)
+            error_msg = f"Projection Error: {e}"
+            logging.error(error_msg)
+            abort(400, error_msg)
     else:
         feature_subset = FEATURE_IDS
     
@@ -407,8 +395,9 @@ def pand_items():
 def get_feature(featureId):
     for key in request.args.keys():
         if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
-            logging.error("Unknown parameter %s", key)
-            abort(400)
+            error_msg = "Unknown parameter %s", key
+            logging.error(error_msg)
+            abort(400, error_msg)
 
     query_params = Parameters(
         offset=int(request.args.get("offset", DEFAULT_OFFSET)),

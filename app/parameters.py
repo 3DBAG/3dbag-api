@@ -22,38 +22,42 @@ class Parameters:
         elif self.crs.lower() == DEFAULT_CRS.lower():
             self.crs = DEFAULT_CRS
         else:
-            logging.error(
+            error_msg = (
                 "Unknown crs %s. Must be either %s or %s",
                 self.crs,
                 DEFAULT_CRS,
                 STORAGE_CRS)
-            abort(400)
+            logging.error(error_msg)
+            abort(400, error_msg)
 
         if self.bbox_crs.lower() == STORAGE_CRS.lower():
             self.bbox_crs = STORAGE_CRS
         elif self.bbox_crs.lower() == DEFAULT_CRS.lower():
             self.bbox_crs = DEFAULT_CRS
         else:
-            logging.error(
+            error_msg = (
                 "Unknown bbox-crs %s. Must be either %s or %s",
                 self.bbox_crs,
                 DEFAULT_CRS,
                 STORAGE_CRS)
-            abort(400)
+            logging.error(error_msg)
+            abort(400, error_msg)
 
         try:
             
             if self.limit < 0:
-                logging.error("Limit must be an positive integer.")
-                abort(400)
+                error_msg = "Limit must be an positive integer."
+                logging.error(error_msg)
+                abort(400, error_msg)
 
             if self.bbox is not None:
                 r = self.bbox.strip().strip("[]").split(',')
                 if len(r) != 4:
-                    logging.error("BBox needs 4 parameters.")
-                    abort(400)
+                    error_msg = "BBox needs 4 parameters."
+                    logging.error(error_msg)
+                    abort(400, error_msg)
                 self.bbox = tuple(list(map(float, r)))
         except ValueError as error:
-            logging.error("Invalid parameter value")
-            logging.error(error)
-            abort(400)
+            error_msg = "Invalid parameter value: %s ", error
+            logging.error(error_msg)
+            abort(400, error_msg)
