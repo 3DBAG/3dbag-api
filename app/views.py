@@ -2,43 +2,25 @@
 
 Copyright 2022 3DGI <info@3dgi.nl>
 """
-import json
 import logging
-from dataclasses import dataclass
 from pathlib import Path
+import json
+from enum import Enum
 from sys import getsizeof
-from typing import Optional, Tuple
 
-import yaml
-from flask import (abort, jsonify, make_response, render_template, request,
-                   Request, url_for)
-from pyproj import exceptions
+from flask import (abort, request, url_for, jsonify, g, render_template)
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.exceptions import HTTPException
+import yaml
 
-
-from app import app, auth, db, db_users, index, parser
-from app.transformations import (transform_bbox_from_default_to_storage,
-                                 transform_bbox_from_storage_to_default)
-from app.authentication import UserAuth  # , Permission
-from cjdb.modules.exporter import Exporter
-
-DEFAULT_LIMIT = 10
-DEFAULT_OFFSET = 1
-
-DEFAULT_CRS = "http://www.opengis.net/def/crs/OGC/0/CRS84h"
-STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/7415"
-
-GLOBAL_LIST_CRS = [DEFAULT_CRS, STORAGE_CRS]
+from app import parser, index, db, app, auth, db_users
 
 # Populate featureID cache (get all identificatie:tile_id into memory
-# conn = db.Db()
-# feature index of (featureId : tile_id)
-# FEATURE_IDX = parser.feature_index(conn)
-# conn.conn.close()
-# logging.debug(
-#     f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
-# # featureID container
-# FEATURE_IDS = tuple(FEATURE_IDX.keys())
+conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
+FEATURE_IDX = parser.feature_index(conn) # feature index of (featureId : tile_id)
+conn.conn.close()
+logging.debug(f"memory size of FEATURE_IDX: {getsizeof(FEATURE_IDX) / 1e6:.2f} Mb")
+FEATURE_IDS = tuple(FEATURE_IDX.keys()) # featureID container
 # Init empty BBOX cache of featureIDs
 bbox_cache = index.BBOXCache()
 
@@ -78,9 +60,9 @@ def auth_error(status):
             code=status,
             name="Unauthorized",
             description=(
-                "The request requires user authentication. The response "
-                "includes a WWW-Authenticate header field containing a "
-                "challenge applicable to the requested resource."
+                "The request requires user authentication. The response includes a "
+                "WWW-Authenticate header field containing a challenge applicable to "
+                "the requested resource."
             )
         )
     elif status == 403:
@@ -88,16 +70,16 @@ def auth_error(status):
             code=status,
             name="Forbidden",
             description=(
-                "The server understood the request, but is refusing to fulfil "
-                "it. Status code 403 indicates that authentication is not the "
-                "issue, but the client is not authorized to perform the "
-                "requested operation on the resource."
+                "The server understood the request, but is refusing to fulfil it. "
+                "While status code 401 indicates missing or bad authentication, status "
+                "code 403 indicates that authentication is not the issue, but the "
+                "client is not authorized to perform the requested operation on the "
+                "resource."
             )
         )
     else:
         logging.error(
-            "Flask-HTTPAuth error_handler is handling an error "
-            "that is not 401 or 403.")
+            "Flask-HTTPAuth error_handler is handling an error that is not 401 or 403.")
         error = dict(
             code=500,
             name="Internal Server Error",
@@ -110,72 +92,75 @@ def auth_error(status):
     return jsonify(error), status
 
 
-@dataclass
-class Parameters:
-    """ Class for holding feature parameters"""
-    offset: int
-    limit: int
-    crs: str
-    bbox_crs: str
-    bbox: Optional[Tuple[float, float, float, float]] = None
+class Permission(Enum):
+    USER = 1
+    ADMINISTRATOR = 16
 
 
-def get_validated_parameters(request: Request) -> Parameters:
-    """ Returns the validated query parameters. 
-    In case of invalid parameters of parameter values 
-    an exception with 400 status code is raised """
-    for key in request.args.keys():
-        if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
-            logging.error("Unknown parameter %s", key)
-            abort(400)
-    crs = request.args.get("crs", DEFAULT_CRS).lower()
-    bbox_crs = request.args.get("bbox-crs", DEFAULT_CRS).lower()
-    global_list_lower = [x.lower() for x in GLOBAL_LIST_CRS]
-    if crs not in global_list_lower:
-        # TODO: Error that gives the available CRSs.
-        logging.error("Unknown crs %s", crs)
-        abort(400)
-    if bbox_crs not in global_list_lower:
-        logging.error("Unknown bbox-crs %s", bbox_crs)
-        abort(400)
-    try:
-        limit = int(request.args.get("limit", DEFAULT_LIMIT))
-        if limit < 0:
-            logging.error("Limit must be an positive integer.")
-            abort(400)
-        offset = int(request.args.get("offset", DEFAULT_OFFSET))
-        bbox = request.args.get("bbox", None)
-        if bbox is not None:
-            r = bbox.strip().strip("[]").split(',')
-            if len(r) != 4:
-                logging.error("BBox needs 4 parameters.")
-                abort(400)
-            bbox = tuple(list(map(float, r)))
-        return Parameters(offset=offset,
-                          limit=limit,
-                          bbox=bbox,
-                          crs=crs,
-                          bbox_crs=bbox_crs)
-    except ValueError as error:
-        logging.error("Invalid parameter value")
-        logging.error(error)
-        abort(400)
+class UserAuth(db_users.Model):
+    __tablename__ = "userauth"
+
+    id = db_users.Column(db_users.Integer, primary_key=True)
+    username = db_users.Column(db_users.String(80), unique=True, nullable=False)
+    # TODO: We should probably generate the API keys with os.urandom(24) as per https://realpython.com/token-based-authentication-with-flask/
+    password_hash = db_users.Column(db_users.String(128), nullable=False)
+    role = db_users.Column(db_users.Enum(Permission))
+
+    def __init__(self, username, password, role=Permission.USER):
+        self.username = username
+        # TODO: require at least 12 mixed character long passwords from the user
+        self.password = password
+        self.role = role
+
+    def __repr__(self):
+        return '<User %r>' % self.username
+
+    @property
+    def password(self):
+        raise AttributeError('password is not a readable attribute')
+
+    @password.setter
+    def password(self, password):
+        self.password_hash = generate_password_hash(password, method="pbkdf2:sha256:320000")
+
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def get_roles(self):
+        return self.role
 
 
-# def load_cityjsonfeature_meta(featureId, data_base_dir):
-#     parent_id = parser.get_parent_id(featureId)
-#     tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
-#     if tile_id is None:
-#         logging.debug(f"featureId {parent_id} not found in feature_index")
-#         abort(404)
+@auth.get_user_roles
+def get_user_roles(user):
+    return user.get_roles()
 
-#     json_path = parser.find_tile_meta_path(data_base_dir, tile_id)
-#     if not json_path.exists():
-#         logging.debug(f"CityJSON metadata file {json_path} not found ")
-#         abort(404)
-#     else:
-#         with json_path.open("r") as fo:
-#             return json.load(fo)
+
+@auth.verify_password
+def verify_password(username, password):
+    if username == "":
+        return None
+    existing_user = UserAuth.query.filter_by(username=username).first()
+    if not existing_user:
+        return None
+    g.current_user = username
+    if existing_user.verify_password(password):
+        return existing_user
+
+
+def load_cityjsonfeature_meta(featureId):
+    parent_id = parser.get_parent_id(featureId)
+    tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
+    if tile_id is None:
+        logging.debug(f"featureId {parent_id} not found in feature_index")
+        abort(404)
+
+    json_path = parser.find_tile_meta_path(app.config["DATA_BASE_DIR"], tile_id)
+    if not json_path.exists():
+        logging.debug(f"CityJSON metadata file {json_path} not found ")
+        abort(404)
+    else:
+        with json_path.open("r") as fo:
+            return json.load(fo, encoding='utf-8-sig')
 
 
 def load_cityjson_meta():
@@ -185,36 +170,35 @@ def load_cityjson_meta():
         abort(404)
     else:
         with json_path.open("r") as fo:
-            return json.load(fo)
+            return json.load(fo, encoding='utf-8-sig')
 
 
-def load_cityjsonfeature(featureId) -> str:
+def load_cityjsonfeature(featureId):
     """Loads a single feature."""
-    connection = db.Db()
-    with Exporter(
-        connection=connection.conn,
-        schema="cjdb",
-        sqlquery=f"SELECT '{featureId}' as object_id",
-        output=None,
-    ) as exporter:
-        stream = exporter.get_stream()
-    logging.info(stream.getvalue())
-    json.loads(stream.getvalue())
-    # TODO problem here is that the stream has multiple json (because it is jsonl)
-    return stream
+    parent_id = parser.get_parent_id(featureId)
+    tile_id = parser.get_tile_id(parent_id, FEATURE_IDX)
+    if tile_id is None:
+        logging.debug(f"featureId {parent_id} not found in feature_index")
+        abort(404)
+
+    json_path = parser.find_co_path(app.config["DATA_BASE_DIR"], parent_id, tile_id)
+    if not json_path.exists():
+        logging.debug(f"CityJSON file {json_path} not found ")
+        abort(404)
+    else:
+        with json_path.open("r") as fo:
+            return json.load(fo, encoding='utf-8-sig')
 
 
-
-def get_paginated_features(features, url: str, parameters: Parameters):
+def get_paginated_features(features, url, offset, limit, bbox=None):
     """From https://stackoverflow.com/a/55546722"""
-    # if parameters.crs == DEFAULT_CRS:
-    #     data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'default'
-    # else:
-    #     data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
-
-    if parameters.bbox is not None:
-        bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}" # noqa
+    offset = int(offset)
+    limit = int(limit)
+    if bbox is None:
+        bbox = ""
     nr_matched = len(features)
+    if nr_matched < offset or limit < 0:
+        abort(404)
     # make response
     links = []
     obj = {"numberMatched": nr_matched}
@@ -227,11 +211,11 @@ def get_paginated_features(features, url: str, parameters: Parameters):
     })
     url_prev = url_next = f"{url}?"
     # make previous URL
-    if parameters.offset > 1:
-        offset_copy = max(1, parameters.offset - parameters.limit)
-        limit_copy = parameters.offset - 1
+    if offset > 1:
+        offset_copy = max(1, offset - limit)
+        limit_copy = offset - 1
         ol = f"offset={offset_copy:d}&limit={limit_copy:d}"
-        if parameters.bbox is None:
+        if bbox == "":
             url_prev += ol
         else:
             url_prev += f"bbox={bbox}&" + ol
@@ -241,10 +225,10 @@ def get_paginated_features(features, url: str, parameters: Parameters):
             "type": "application/city+json",
         })
     # make next URL
-    if parameters.offset + parameters.limit < nr_matched:
-        offset_copy = parameters.offset + parameters.limit
-        ol = f"offset={offset_copy:d}&limit={parameters.limit:d}"
-        if parameters.bbox is None:
+    if offset + limit < nr_matched:
+        offset_copy = offset + limit
+        ol = f"offset={offset_copy:d}&limit={limit:d}"
+        if bbox == "":
             url_next += ol
         else:
             url_next += f"bbox={bbox}&" + ol
@@ -253,20 +237,11 @@ def get_paginated_features(features, url: str, parameters: Parameters):
             "rel": "next",
             "type": "application/city+json",
         })
-    obj["type"] = 'FeatureCollection'
     obj["links"] = links
     # get features according to bounds
-    if not all(features):
-        obj["numberReturned"] = 0
-        obj["features"] = []
-    else:
-        res = features[
-            (parameters.offset - 1):(
-                parameters.offset - 1 + parameters.limit)]
-        obj["numberReturned"] = len(res)
-        obj["features"] = [
-            load_cityjsonfeature(
-                featureId) for featureId in res]
+    res = features[(offset - 1):(offset - 1 + limit)]
+    obj["numberReturned"] = len(res)
+    obj["features"] = [load_cityjsonfeature(featureId) for featureId in res]
     return obj
 
 
@@ -274,7 +249,7 @@ def get_paginated_features(features, url: str, parameters: Parameters):
 def landing_page():
     return {
         "title": "3D BAG plus",
-        "description": "3D BAG plus is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.", # noqa
+        "description": "3D BAG plus is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.",
         "links": [
             {
                 "href": request.url,
@@ -298,7 +273,7 @@ def landing_page():
                 "href": url_for("conformance", _external=True),
                 "rel": "conformance",
                 "type": "application/json",
-                "title": "OGC API conformance classes implemented by this server" # noqa
+                "title": "OGC API conformance classes implemented by this server"
             },
             {
                 "href": url_for("collections", _external=True),
@@ -348,10 +323,6 @@ def collections():
                 "type": "application/json",
                 "title": "this document"
             },
-        ],
-        "crs": [
-            DEFAULT_CRS,
-            STORAGE_CRS
         ]
     }
 
@@ -367,13 +338,13 @@ def pand():
             "spatial": {
                 "bbox": [
                     [
-                        3.3335406283191253,
-                        50.72794948839276,
-                        7.391791169364946,
-                        53.58254841348389
+                        10000,
+                        306250,
+                        287760,
+                        623690
                     ]
                 ],
-                "crs": DEFAULT_CRS
+                "crs": "https://www.opengis.net/def/crs/EPSG/0/7415"
             },
             "temporal": {
                 "interval": [
@@ -384,10 +355,8 @@ def pand():
         },
         "itemType": "feature",
         "crs": [
-            DEFAULT_CRS,
-            STORAGE_CRS
+            "https://www.opengis.net/def/crs/EPSG/0/7415"
         ],
-        "storageCrs": STORAGE_CRS,
         "transform": meta["transform"],
         "version": {
             "cityjson": meta["version"],
@@ -405,7 +374,7 @@ def pand():
             {
                 "href": url_for("pand_items", _external=True),
                 "rel": "items",
-                "type": "application/geo+json",
+                "type": "application/city+json",
                 "title": "Pand items"
             },
             {
@@ -425,124 +394,78 @@ def pand():
 
 
 @app.get('/collections/pand/items')
-# @auth.login_required
+@auth.login_required
 def pand_items():
-    query_params = get_validated_parameters(request)
-    # Connect to the DB with the desired CRS
-    if query_params.crs.lower() == STORAGE_CRS.lower():
-        query_params.crs = STORAGE_CRS
-        conn = db.Db()
-    elif query_params.crs.lower() == DEFAULT_CRS.lower():
-        query_params.crs = DEFAULT_CRS
-        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG_DEFAULT"])
-    else:
-        logging.error(
-            "Unknown crs %s. Must be either %s or %s",
-            query_params.crs,
-            DEFAULT_CRS,
-            STORAGE_CRS)
-        abort(400)
-
-    if query_params.bbox is not None:
-        try:
-            # convert the bbox_crs to the requested crs
-            logging.debug(
-                "Input bbox %s in %s and with crs: %s",
-                query_params.bbox,
-                query_params.bbox_crs,
-                query_params.crs)
-            if query_params.bbox_crs.lower() == DEFAULT_CRS.lower() \
-               and query_params.crs.lower() == STORAGE_CRS.lower():
-                logging.debug("Transforming bbox from default to storage CRS")
-                query_params.bbox = \
-                    transform_bbox_from_default_to_storage(query_params.bbox)
-
-                query_params.bbox_crs = STORAGE_CRS
-            elif query_params.bbox_crs.lower() == STORAGE_CRS.lower() \
-                    and query_params.crs.lower() == DEFAULT_CRS.lower():
-                logging.debug("Transforming bbox from storage to default CRS")
-                query_params.bbox = \
-                    transform_bbox_from_storage_to_default(query_params.bbox)
-                query_params.bbox_crs = DEFAULT_CRS
-            logging.debug(
-                f"Transformed bbox: {query_params.bbox}")
-            # tiles_matches = [TILES_SHAPELY[id(tile)][1]
-            # for tile in TILES_RTREE.query(bbox)]
-
-            # TODO OPTIMIZE: use a connection pool instead of connecting each
-            # time. DB connection is very expensive.
-            feature_subset = bbox_cache.get(conn, query_params.bbox)
-        except exceptions.ProjError as e:
-            logging.error(f"Projection Error: {e}")
+    query_params = dict(
+        bbox=request.args.get("bbox", None),
+        offset=request.args.get("offset", 1),
+        limit=request.args.get("limit", 10)
+    )
+    if query_params["bbox"] is not None:
+        r = query_params["bbox"].split(',')
+        if len(r) != 4:
             abort(400)
+        try:
+            bbox = list(map(float, r))
+        except TypeError as e:
+            logging.debug(e)
+            abort(400)
+        # tiles_matches = [TILES_SHAPELY[id(tile)][1] for tile in TILES_RTREE.query(bbox)]
+        logging.debug(f"query with bbox {bbox}")
+        # TODO OPTIMIZE: use a connection pool instead of connecting each time. DB connection is very expensive.
+        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
+        feature_subset = bbox_cache.get(conn, bbox)
+        conn.conn.close()
     else:
+        conn = db.Db(dbfile=app.config["FEATURE_INDEX_GPKG"])
         feature_subset = FEATURE_IDS
-    
-    response = make_response(jsonify(get_paginated_features(
-        feature_subset,
-        url_for("pand_items", _external=True), conn,
-        query_params)), 200)
-    response.headers["Content-Crs"] = f"<{query_params.crs}>"
-    #conn.conn.close()
-
-    return response
+        conn.conn.close()
+    return jsonify(get_paginated_features(feature_subset,
+                                          url_for("pand_items", _external=True),
+                                          **query_params))
 
 
 @app.get('/collections/pand/items/<featureId>')
-# @auth.login_required
+@auth.login_required
 def get_feature(featureId):
-    crs = request.args.get("crs", DEFAULT_CRS)
-    if crs.lower() == DEFAULT_CRS.lower():
-        crs = DEFAULT_CRS
-        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'default'
-    elif crs.lower() == STORAGE_CRS.lower():
-        crs = STORAGE_CRS
-        data_base_dir = Path(app.config["DATA_BASE_DIR"]) / 'storage'
-    else:
-        logging.error(
-            "Unknown crs %s. Must be either %s or %s",
-            crs,
-            DEFAULT_CRS,
-            STORAGE_CRS)
-        abort(400)
+    logging.debug(f"requesting {featureId}")
     cityjsonfeature = load_cityjsonfeature(featureId)
 
     links = [
         {
             "href": request.url,
             "rel": "self",
-            "type": "application/json",
+            "type": "application/city+json",
             "title": "this document"
         },
         {
             "href": url_for("pand", _external=True),
             "rel": "collection",
-            "type": "application/json"
+            "type": "application/city+json"
         },
         {
-            "href": f'{url_for("pand", _external=True)}/items/{cityjsonfeature["id"]}',# noqa
+            "href": f'{url_for("pand", _external=True)}/items/{cityjsonfeature["id"]}',
             "rel": "parent",
             "type": "application/city+json"
         },
     ]
-    for coid in cityjsonfeature["CityObjects"][cityjsonfeature["id"]]["children"]: # noqa
+    for coid in cityjsonfeature["CityObjects"][cityjsonfeature["id"]]["children"]:
         links.append({
             "href": f'{url_for("pand", _external=True)}/items/{coid}',
             "rel": "child",
             "type": "application/city+json"
         })
-    response = make_response(jsonify({
+
+    return jsonify({
         "id": cityjsonfeature["id"],
         "feature": cityjsonfeature,
         "links": links
-    }), 200)
-    response.headers["Content-Crs"] = f"<{crs}>"
+    })
 
-    return response
 
 
 @app.get('/collections/pand/items/<featureId>/addresses')
-# @auth.login_required
+@auth.login_required
 def get_addresses(featureId):
     logging.debug(f"requesting {featureId} addresses")
     parent_id = parser.get_parent_id(featureId)
@@ -552,21 +475,17 @@ def get_addresses(featureId):
         abort(404)
 
     try:
-        csv_path = parser.find_addresses_csv_path(
-            app.config["DATA_BASE_DIR"], tile_id)
+        csv_path = parser.find_addresses_csv_path(app.config["DATA_BASE_DIR"], tile_id)
         addresses_gen = parser.parse_addresses_csv(csv_path)
-        # FIXME: here we need the BAG identifiactie, but for the surfaces
-        # records we need the 3D BAG building part identificatie
-        # FIXME: a bag feature can have multiple children in the 3d bag,
-        # thus we need to  return an array of children
+        # FIXME: here we need the BAG identifiactie, but for the surfaces records we need the 3D BAG building part identificatie
+        # FIXME: a bag feature can have multiple childern in the 3d bag, thus we needto  return an array of children
         addresses_record = parser.get_feature_record(parent_id, addresses_gen)
     except BaseException as e:
         logging.exception(e)
         abort(500)
 
     if addresses_record is None:
-        logging.debug(
-            f"featureId {featureId} not found in the addresses records")
+        logging.debug(f"featureId {featureId} not found in the addresses records")
         abort(404)
 
     addresses_record["links"] = [
@@ -587,7 +506,7 @@ def get_addresses(featureId):
 
 
 @app.get('/collections/pand/items/<featureId>/surfaces')
-# @auth.login_required
+@auth.login_required
 def get_surfaces(featureId):
     logging.debug(f"requesting {featureId} surfaces")
     parent_id = parser.get_parent_id(featureId)
@@ -597,13 +516,10 @@ def get_surfaces(featureId):
         abort(404)
 
     try:
-        csv_path = parser.find_surfaces_csv_path(
-            app.config["DATA_BASE_DIR"], tile_id)
+        csv_path = parser.find_surfaces_csv_path(app.config["DATA_BASE_DIR"], tile_id)
         surfaces_gen = parser.parse_surfaces_csv(csv_path)
-        # FIXME: a bag feature can have multiple children in the 3d bag,
-        # thus we need to  return an array of children
-        # FIXME: we are querying with parent_ids in the api,
-        # not with children-ids, how make this work neatly?
+        # FIXME: a bag feature can have multiple childern in the 3d bag, thus we needto  return an array of children
+        # FIXME: we are querying with parent_ids in the api, not with children-ids, how make this work neatly?
         if featureId.find("-") < 0:
             # we have a parent_id, but we need a child-id, so let's make one...
             featureId += "-0"
@@ -613,8 +529,7 @@ def get_surfaces(featureId):
         abort(500)
 
     if surfaces_record is None:
-        logging.debug(
-            f"featureId {featureId} not found in the surfaces records")
+        logging.debug(f"featureId {featureId} not found in the surfaces records")
         abort(404)
 
     surfaces_record["links"] = [
@@ -635,7 +550,7 @@ def get_surfaces(featureId):
 
 
 @app.route("/register", methods=["GET", "POST"])
-# @auth.login_required(role=Permission.ADMINISTRATOR)
+@auth.login_required(role=Permission.ADMINISTRATOR)
 def register():
     user = UserAuth(**request.json)
     db_users.session.add(user)
