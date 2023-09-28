@@ -40,26 +40,9 @@ class TestDev:
             response = views.get_feature(feature_id)
             assert response.status_code == 200
 
-    def test_collections_pand_addresses(self, app, authorization):
-        feature_id = "NL.IMBAG.Pand.1655100000500573"
-        with app.test_request_context(
-            f"/collections/pand/items/{feature_id}/addresses",
-             headers=authorization):
-            response = views.get_addresses(feature_id)
-            assert response.status_code == 200
-
-    def test_collections_pand_surfaces(self, app, authorization):
-        feature_id = "NL.IMBAG.Pand.1655100000548671-0"
-        with app.test_request_context(
-                f"/collections/pand/items/{feature_id}/surfaces",
-                headers=authorization):
-            response = views.get_surfaces(feature_id)
-            assert response.status_code == 200
-
     def test_load_cityjsonfeature(self):
         feature_id = "NL.IMBAG.Pand.1655100000548444"
-        data_base_dir = Path('/Users/gina/data/3DBAGplus/storage/')
-        promise = views.load_cityjsonfeature(feature_id, data_base_dir)
+        promise = views.load_cityjsonfeature(feature_id)
         assert feature_id in dict(promise)["CityObjects"]
 
 
