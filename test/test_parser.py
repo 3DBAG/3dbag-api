@@ -1,7 +1,6 @@
 from pathlib import Path
 from pprint import pprint
 
-from app import app
 from app.db import Db
 from app.parser import (feature_index, find_co_path, get_feature_record,
                         parse_surfaces_csv)
@@ -24,7 +23,7 @@ def test_feature_index():
 
 def test_parse_surfaces_csv():
     p = Path("test/resources/997_lod2_surface_areas.csv")
-    res = parse_surfaces_csv(p)
+    _ = parse_surfaces_csv(p)
 
 
 def test_get_feature_surfaces():
