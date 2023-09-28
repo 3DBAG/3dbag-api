@@ -272,7 +272,7 @@ def collections():
 @app.get('/collections/pand')
 def pand():
     return {
-        "id": "Pand",
+        "id": "pand",
         "title": "Pand",
         "description": "3D building models based on the 'pand' layer of the BAG data set.",
         "extent": {
