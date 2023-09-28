@@ -17,7 +17,7 @@ def test_connection_to_godzilla():
 
 def test_feature_index():
     """Load and return the feature index."""
-    conn = Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
+    conn = Db()
     fi = feature_index(conn)
     assert len(fi) > 1
 
