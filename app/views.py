@@ -14,7 +14,7 @@ from pyproj import exceptions
 from werkzeug.exceptions import HTTPException
 
 from app import app, auth, db, db_users, index, parser
-from app.parameters import Parameters, DEFAULT_CRS, STORAGE_CRS
+from app.parameters import Parameters, DEFAULT_CRS, STORAGE_CRS, DEFAULT_BBOX
 from app.authentication import UserAuth, Permission
 from app.transformations import (transform_bbox_from_default_to_storage,
                                  transform_bbox_from_storage_to_default)
@@ -119,7 +119,11 @@ def load_cityjsonfeature(featureId, connection) -> str:
     return json.loads(feature[0])
 
 
-def get_paginated_features(features, url: str, parameters: Parameters):
+def get_paginated_features(features,
+                           url: str,
+                           connection,
+                           parameters: Parameters
+                           ):
     """From https://stackoverflow.com/a/55546722"""
     if parameters.bbox is not None:
         bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}" # noqa
@@ -169,7 +173,6 @@ def get_paginated_features(features, url: str, parameters: Parameters):
         obj["numberReturned"] = 0
         obj["features"] = []
     else:
-        connection = db.Db()
         res = features[
             (parameters.offset - 1):(
                 parameters.offset - 1 + parameters.limit)]
@@ -340,53 +343,53 @@ def pand_items():
             abort(400, error_msg)
 
     query_params = Parameters(
-        offset=int(request.args.get("offset", DEFAULT_OFFSET)),
-        limit=int(request.args.get("limit", DEFAULT_LIMIT)),
+        offset=request.args.get("offset", DEFAULT_OFFSET),
+        limit=request.args.get("limit", DEFAULT_LIMIT),
         crs=request.args.get("crs", DEFAULT_CRS),
         bbox_crs=request.args.get("bbox-crs", DEFAULT_CRS),
         bbox=request.args.get("bbox", None)
     )
+    conn = db.Db()
 
-    if query_params.bbox is not None:
-        try:
-            # convert the bbox_crs to the requested crs
-            logging.debug(
-                "Input bbox %s in %s and with crs: %s",
-                query_params.bbox,
-                query_params.bbox_crs,
-                query_params.crs)
-            if query_params.bbox_crs.lower() == DEFAULT_CRS.lower() \
-               and query_params.crs.lower() == STORAGE_CRS.lower():
-                logging.debug("Transforming bbox from default to storage CRS")
-                query_params.bbox = \
-                    transform_bbox_from_default_to_storage(query_params.bbox)
+    try:
+        # convert the bbox_crs to the requested crs
+        logging.debug(
+            "Input bbox %s in %s and with crs: %s",
+            query_params.bbox,
+            query_params.bbox_crs,
+            query_params.crs)
+        if query_params.bbox_crs.lower() == DEFAULT_CRS.lower() \
+            and query_params.crs.lower() == STORAGE_CRS.lower():
+            logging.debug("Transforming bbox from default to storage CRS")
+            query_params.bbox = \
+                transform_bbox_from_default_to_storage(query_params.bbox)
 
-                query_params.bbox_crs = STORAGE_CRS
-            elif query_params.bbox_crs.lower() == STORAGE_CRS.lower() \
-                    and query_params.crs.lower() == DEFAULT_CRS.lower():
-                logging.debug("Transforming bbox from storage to default CRS")
-                query_params.bbox = \
-                    transform_bbox_from_storage_to_default(query_params.bbox)
-                query_params.bbox_crs = DEFAULT_CRS
-            logging.debug(
-                f"Transformed bbox: {query_params.bbox}")
+            query_params.bbox_crs = STORAGE_CRS
+        elif query_params.bbox_crs.lower() == STORAGE_CRS.lower() \
+                and query_params.crs.lower() == DEFAULT_CRS.lower():
+            logging.debug("Transforming bbox from storage to default CRS")
+            query_params.bbox = \
+                transform_bbox_from_storage_to_default(query_params.bbox)
+            query_params.bbox_crs = DEFAULT_CRS
+        logging.debug(
+            f"Transformed bbox: {query_params.bbox}")
 
-            # TODO OPTIMIZE: use a connection pool instead of connecting each
-            # time. DB connection is very expensive.
-            feature_subset = bbox_cache.get(conn, query_params.bbox)
-        except exceptions.ProjError as e:
-            error_msg = f"Projection Error: {e}"
-            logging.error(error_msg)
-            abort(400, error_msg)
-    else:
-        feature_subset = FEATURE_IDS
-    
+        # TODO OPTIMIZE: use a connection pool instead of connecting each
+        # time. DB connection is very expensive.
+
+        feature_subset = bbox_cache.get(conn, query_params.bbox)
+
+    except exceptions.ProjError as e:
+        error_msg = f"Projection Error: {e}"
+        logging.error(error_msg)
+        abort(400, error_msg)
+
     response = make_response(jsonify(get_paginated_features(
         feature_subset,
         url_for("pand_items", _external=True), conn,
         query_params)), 200)
     response.headers["Content-Crs"] = f"<{query_params.crs}>"
-
+    conn.conn.close()
     return response
 
 
