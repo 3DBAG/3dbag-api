@@ -55,16 +55,11 @@ def features_in_bbox(conn, bbox):
     # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead
     # of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
     query = f"""
-    SELECT identificatie
-    FROM bag_index
-    WHERE fid IN
-          (SELECT id
-           FROM rtree_bag_index_geom
-           WHERE minx <= {bbox[2]}
-             AND maxx >= {bbox[0]}
-             AND miny <= {bbox[3]}
-             AND maxy >= {bbox[1]});
-    """.replace("\n", "")
+        SELECT co.object_id, co.ground_geometry
+        FROM cjdb.city_object co
+        WHERE st_within(co.ground_geometry,
+        ST_MakeEnvelope({bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]},  7415));
+        """.replace("\n", "")
     return tuple(t[0] for t in conn.get_query(query))
 
 
