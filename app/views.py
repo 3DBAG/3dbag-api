@@ -225,7 +225,7 @@ def landing_page():
 
 @app.get('/api')
 def api():
-    rdir = Path(app.root_path).parent / "schemas"
+    rdir = Path(app.root_path) / "schemas"
     with (rdir / "3dbagapi_spec.yaml").open("r") as fo:
         f = yaml.full_load(fo)
     return jsonify(f)
