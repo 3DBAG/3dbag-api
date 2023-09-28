@@ -7,6 +7,14 @@ from app.parser import (feature_index, find_co_path, get_feature_record,
                         parse_surfaces_csv)
 
 
+def test_connection_to_godzilla():
+    """Load and return the feature index."""
+    conn = Db()
+    res = conn.get_query("Select 1 as idx;")
+    print(res)
+    assert res[0][0] == 1
+
+
 def test_feature_index():
     """Load and return the feature index."""
     conn = Db(dbfile=app.config["FEATURE_INDEX_GPKG_STORAGE"])
