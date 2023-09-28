@@ -340,7 +340,7 @@ def pand_items():
         if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
             error_msg = "Unknown parameter %s", key
             logging.error(error_msg)
-            abort(400, error_msg)
+            abort(400)
 
     query_params = Parameters(
         offset=request.args.get("offset", DEFAULT_OFFSET),
@@ -382,7 +382,7 @@ def pand_items():
     except exceptions.ProjError as e:
         error_msg = f"Projection Error: {e}"
         logging.error(error_msg)
-        abort(400, error_msg)
+        abort(400)
 
     response = make_response(jsonify(get_paginated_features(
         feature_subset,
@@ -400,7 +400,7 @@ def get_feature(featureId):
         if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
             error_msg = "Unknown parameter %s", key
             logging.error(error_msg)
-            abort(400, error_msg)
+            abort(400)
 
     query_params = Parameters(
         offset=int(request.args.get("offset", DEFAULT_OFFSET)),
