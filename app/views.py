@@ -5,91 +5,26 @@ Copyright 2022 3DGI <info@3dgi.nl>
 import json
 import logging
 from pathlib import Path
+from typing import List
 
 import yaml
 from cjdb.modules.exporter import Exporter
 from flask import (abort, jsonify, make_response, render_template,
                    request, url_for)
-from pyproj import exceptions
-from werkzeug.exceptions import HTTPException
 
 from app import app, auth, db, db_users, index, parser
 from app.parameters import Parameters, DEFAULT_CRS, STORAGE_CRS, DEFAULT_BBOX
 from app.authentication import UserAuth, Permission
-from app.transformations import (transform_bbox_from_default_to_storage,
-                                 transform_bbox_from_storage_to_default)
 
-DEFAULT_LIMIT = 10
+DEFAULT_LIMIT = 100
 DEFAULT_OFFSET = 1
 
 bbox_cache = index.BBOXCache()
 
-
-@app.errorhandler(HTTPException)
-def handle_exception(e):
-    """Return JSON instead of HTML for HTTP errors."""
-    # start with the correct headers and status code from the error
-    response = e.get_response()
-    # replace the body with JSON
-    response.data = json.dumps({
-        "code": e.code,
-        "name": e.name,
-        "description": e.description,
-    })
-    response.content_type = "application/json"
-    return response
-
-
-@app.errorhandler(404)
-def resource_not_found(e):
-    e.description = (
-        "The requested resource (or feature) does not exist on the server. "
-        "For example, a path parameter had an incorrect value."
-    )
-    return jsonify(
-        code=e.code,
-        name=e.name,
-        description=e.description
-    ), 404
-
-
-@auth.error_handler
-def auth_error(status):
-    if status == 401:
-        error = dict(
-            code=status,
-            name="Unauthorized",
-            description=(
-                "The request requires user authentication. The response "
-                "includes a WWW-Authenticate header field containing a "
-                "challenge applicable to the requested resource."
-            )
-        )
-    elif status == 403:
-        error = dict(
-            code=status,
-            name="Forbidden",
-            description=(
-                "The server understood the request, but is refusing to fulfil "
-                "it. Status code 403 indicates that authentication is not the "
-                "issue, but the client is not authorized to perform the "
-                "requested operation on the resource."
-            )
-        )
-    else:
-        logging.error(
-            "Flask-HTTPAuth error_handler is handling an error "
-            "that is not 401 or 403.")
-        error = dict(
-            code=500,
-            name="Internal Server Error",
-            description=(
-                "The server encountered an internal error and was unable to"
-                " complete your request. Either the server is overloaded or"
-                " there is an error in the application."
-            )
-        )
-    return jsonify(error), status
+conn = db.Db()
+logging.debug("Collecting all available object ids.")
+DEFAULT_FEATURE_SET = index.get_all_object_ids(conn)
+conn.conn.close()
 
 
 def load_cityjsonfeature_meta(featureId, connection):
@@ -119,12 +54,31 @@ def load_cityjsonfeature(featureId, connection) -> str:
     return json.loads(feature[0])
 
 
+def load_cityjsonfeatures(featureIds: List[str], connection) -> str:
+    """Loads a group of features."""
+    feature_ids_str = str(
+        [[x] for x in featureIds])[1:-1].replace("[", "(").replace("]", ")")
+    print(feature_ids_str)
+    with Exporter(
+        connection=connection.conn,
+        schema="cjdb",
+        sqlquery=f"""VALUES {feature_ids_str}""",
+        output=None,
+    ) as exporter:
+        exporter.get_data()
+        features = exporter.get_features()
+    return [json.loads(feature) for feature in features]
+
+
 def get_paginated_features(features,
                            url: str,
                            connection,
                            parameters: Parameters
                            ):
     """From https://stackoverflow.com/a/55546722"""
+    logging.debug(
+        f"""Pagination started with limit {parameters.limit}
+        and offset {parameters.offset}""")
     if parameters.bbox is not None:
         bbox = f"{parameters.bbox[0]},{parameters.bbox[1]},{parameters.bbox[2]},{parameters.bbox[3]}" # noqa
     nr_matched = len(features)
@@ -176,10 +130,9 @@ def get_paginated_features(features,
         res = features[
             (parameters.offset - 1):(
                 parameters.offset - 1 + parameters.limit)]
+        logging.info(f"length {len(res)}")
         obj["numberReturned"] = len(res)
-        obj["features"] = [
-            load_cityjsonfeature(
-                featureId, connection) for featureId in res]
+        obj["features"] = load_cityjsonfeatures(res, connection)
     return obj
 
 
@@ -336,6 +289,7 @@ def pand():
 @app.get('/collections/pand/items')
 # @auth.login_required
 def pand_items():
+    # Validation
     for key in request.args.keys():
         if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
             error_msg = "Unknown parameter %s", key
@@ -351,39 +305,17 @@ def pand_items():
     )
     conn = db.Db()
 
-    try:
-        # convert the bbox_crs to the requested crs
-        logging.debug(
-            "Input bbox %s in %s and with crs: %s",
-            query_params.bbox,
-            query_params.bbox_crs,
-            query_params.crs)
-        if query_params.bbox_crs.lower() == DEFAULT_CRS.lower() \
-            and query_params.crs.lower() == STORAGE_CRS.lower():
-            logging.debug("Transforming bbox from default to storage CRS")
-            query_params.bbox = \
-                transform_bbox_from_default_to_storage(query_params.bbox)
-
-            query_params.bbox_crs = STORAGE_CRS
-        elif query_params.bbox_crs.lower() == STORAGE_CRS.lower() \
-                and query_params.crs.lower() == DEFAULT_CRS.lower():
-            logging.debug("Transforming bbox from storage to default CRS")
-            query_params.bbox = \
-                transform_bbox_from_storage_to_default(query_params.bbox)
-            query_params.bbox_crs = DEFAULT_CRS
-        logging.debug(
-            f"Transformed bbox: {query_params.bbox}")
-
-        # TODO OPTIMIZE: use a connection pool instead of connecting each
-        # time. DB connection is very expensive.
-
+    if query_params.bbox:
+        logging.debug("Getting Features inbbox")
         feature_subset = bbox_cache.get(conn, query_params.bbox)
+        logging.debug("Got Features in bbox")
 
-    except exceptions.ProjError as e:
-        error_msg = f"Projection Error: {e}"
-        logging.error(error_msg)
-        abort(400)
+    else:
+        logging.debug("Getting Features")
+        feature_subset = DEFAULT_FEATURE_SET
+        logging.debug("Got Features")
 
+    logging.debug(f" Selection of {len(feature_subset)}  features.")
     response = make_response(jsonify(get_paginated_features(
         feature_subset,
         url_for("pand_items", _external=True), conn,
@@ -397,14 +329,17 @@ def pand_items():
 # @auth.login_required
 def get_feature(featureId):
     for key in request.args.keys():
-        if key not in ["bbox", "offset", "limit", "crs", "bbox-crs"]:
-            error_msg = "Unknown parameter %s", key
+        if key not in ["crs"]:
+            error_msg = """Unknown parameter %s.
+                            For GET requests for specifics features
+                            (/collections/pand/items/<featureId>)
+                            only 'crs' is available.""", key
             logging.error(error_msg)
             abort(400)
 
     query_params = Parameters(
-        offset=int(request.args.get("offset", DEFAULT_OFFSET)),
-        limit=int(request.args.get("limit", DEFAULT_LIMIT)),
+        offset=request.args.get("offset", DEFAULT_OFFSET),
+        limit=request.args.get("limit", DEFAULT_LIMIT),
         crs=request.args.get("crs", DEFAULT_CRS),
         bbox_crs=request.args.get("bbox-crs", DEFAULT_CRS),
         bbox=request.args.get("bbox", None)
