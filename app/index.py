@@ -2,7 +2,7 @@
 
 Copyright 2022 3DGI <info@3dgi.nl>
 """
-from typing import Tuple
+from typing import Tuple, List
 from bisect import bisect_left
 from pathlib import Path
 import json
@@ -43,7 +43,7 @@ class BBOXCache:
         if bbox_new == self.bbox:
             return self.feature_subset
         else:
-            self.add(features_in_bbox(conn, bbox), bbox_new)
+            self.add(get_features_in_bbox(conn, bbox), bbox_new)
             return self.feature_subset
 
     def clear(self):
@@ -51,15 +51,33 @@ class BBOXCache:
         self.bbox = ()
 
 
-def features_in_bbox(conn, bbox):
+def get_all_object_ids(conn) -> Tuple[str]:
+    """Retrieve all the object ids from the DB"""
+    # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead
+    # of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
+    query = """
+                SELECT co.object_id
+                FROM cjdb.city_object co;
+            """.replace("\n", "")
+    return tuple(t[0] for t in conn.get_query(query))
+
+
+def get_features_in_bbox(conn, bbox: List[float]) -> Tuple[str]:
+    """
+    Retrieve from the DB all the object ids of the buildings
+    lying in the input bbox.
+    """
     # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead
     # of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
     query = f"""
-        SELECT co.object_id, co.ground_geometry
-        FROM cjdb.city_object co
-        WHERE st_within(co.ground_geometry,
-        ST_MakeEnvelope({bbox[0]}, {bbox[1]}, {bbox[2]}, {bbox[3]},  7415));
-        """.replace("\n", "")
+                SELECT co.object_id
+                FROM cjdb.city_object co
+                WHERE st_within(co.ground_geometry,
+                ST_MakeEnvelope({bbox[0]},
+                                {bbox[1]},
+                                {bbox[2]},
+                                {bbox[3]},  7415));
+            """.replace("\n", "")
     return tuple(t[0] for t in conn.get_query(query))
 
 
