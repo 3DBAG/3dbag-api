@@ -17,7 +17,6 @@ def client(app):
 def runner(app):
     return app.test_cli_runner()
 
-
 @pytest.fixture()
 def authorization():
     # balazs:1234 in base64

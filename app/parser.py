@@ -7,9 +7,9 @@ from pathlib import Path
 
 
 def get_parent_id(featureId):
-    # Get the ID of the parent feature if it is a BuildingPart,
-    # like NL.IMBAG.Pand.1655100000488643-0, because the feature_index
-    # onl contains the parent IDs.
+    # Get the ID of the parent feature if it is a BuildinPart,
+    # like NL.IMBAG.Pand.1655100000488643-0, because the feature_index only
+    # contains the parent IDs.
     return featureId.rsplit("-")[0]
 
 
@@ -23,31 +23,26 @@ def get_tile_id(parent_id, feature_index):
 
 def feature_index(conn):
     """Returns the feature-tile index of the 3D BAG."""
-    query = """SELECT co.object_id, cm.id
-               FROM cjdb.cj_metadata cm
-               JOIN cjdb.city_object co
-               ON co.cj_metadata_id = cm.id"""
+    query = "SELECT identificatie, tile_id FROM bag_index"
     return dict((k, v) for k, v in conn.get_query(query))
 
 
 def find_surfaces_csv_path(data_base_dir, tile_id):
-    """Return the file path of the CSV file containing the surfaces
-    record for tile_id.
+    """Return the file path of the CSV file containing the surfaces record for tile_id.
 
     :returns: Absolute path to CSV file.
     """
     base = Path(data_base_dir).resolve()
-    return base / f"{tile_id}_lod2_surface_areas.csv"
+    return base / "tiles" / tile_id / f"{tile_id}_lod2_surface_areas.csv"
 
 
 def find_addresses_csv_path(data_base_dir, tile_id):
-    """Return the file path of the CSV file containing the
-    addresses record for tile_id.
+    """Return the file path of the CSV file containing the addresses record for tile_id.
 
     :returns: Absolute path to CSV file.
     """
     base = Path(data_base_dir).resolve()
-    return base / f"{tile_id}_lod2_surface_areas_addr.csv"
+    return base / "tiles" / tile_id / f"{tile_id}_lod2_surface_areas_addr.csv"
 
 
 def find_co_path(data_base_dir, featureId, tile_id):
@@ -57,12 +52,12 @@ def find_co_path(data_base_dir, featureId, tile_id):
 
 def find_tile_meta_path(data_base_dir, tile_id):
     base = Path(data_base_dir).resolve()
-    return base / "tiles" / tile_id / "meta.json"
+    return base / "tiles" / tile_id / f"meta.json"
 
 
 def find_meta_path(data_base_dir):
     base = Path(data_base_dir).resolve()
-    return base / "meta.json"
+    return base / f"meta.json"
 
 
 def parse_surfaces_csv(path: Path):
