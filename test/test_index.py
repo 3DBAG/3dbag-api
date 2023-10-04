@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from app.db import Db
-from app.index import features_in_bbox, morton_code, take_closest
+from app.index import get_features_in_bbox, morton_code, take_closest
 
 
 def test_bbox_within_tile():
@@ -44,7 +44,7 @@ def test_bbox_within_tile():
 def test_features_in_bbox(app):
     DB = Db()
     bbox = (68194.423, 395606.054, 68608.839, 396076.441)
-    feature_subset = features_in_bbox(DB, bbox)
+    feature_subset = get_features_in_bbox(DB, bbox)
     print(len(feature_subset))
     DB.conn.close()
 
@@ -52,7 +52,7 @@ def test_features_in_bbox(app):
 def test_features_in_bbox_large(app):
     DB = Db()
     bbox = (77797.577, 450905.086, 85494.901, 456719.503)
-    feature_subset = features_in_bbox(DB, bbox)
+    feature_subset = get_features_in_bbox(DB, bbox)
     print(len(feature_subset))
     DB.conn.close()
 
@@ -60,6 +60,6 @@ def test_features_in_bbox_large(app):
 def test_features_in_bbox_verylarge(app):
     DB = Db()
     bbox = (75877.011, 446130.034, 92446.593, 460259.369)
-    feature_subset = features_in_bbox(DB, bbox)
+    feature_subset = get_features_in_bbox(DB, bbox)
     print(len(feature_subset))
     DB.conn.close()
