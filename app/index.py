@@ -2,27 +2,24 @@
 
 Copyright 2022 3DGI <info@3dgi.nl>
 """
-from typing import Tuple
+from typing import Tuple, List
 from bisect import bisect_left
 from pathlib import Path
 import json
-import logging
-
 
 from shapely.strtree import STRtree
-from shapely.geometry import box, shape
-from shapely import speedups
-speedups.enable()
-logging.info(f"shapely speedups enabled: {speedups.available}")
+from shapely.geometry import shape
 
 
 class BBOXCache:
     """Cached BBOX query of features.
 
-    If a new BBOX is requested then query the index, store the feature subset in the
+    If a new BBOX is requested then query the index,
+    store the feature subset in the
     cache and return the feature subset.
 
-    If the previously reqested BBOX is requested again, return the feature subset from
+    If the previously requested BBOX is requested again,
+    return the feature subset from
     the cache.
     """
 
@@ -35,16 +32,18 @@ class BBOXCache:
         self.bbox = bbox
 
     def get(self, conn, bbox: Tuple[float, float, float, float]):
-        """Get the featureIDs in the `bbox`. BBOX comparison is string comparison of
-        the coordinate values that are formatted to three decimal places.
+        """Get the featureIDs in the `bbox`.
+        BBOX comparison is string comparison of
+        the coordinate values that are formatted
+        to three decimal places.
         """
-        # We exepect that at this point we have a valid 'bbox', as in a tuple of
-        # four floats
+        # We expect that at this point we have a valid 'bbox',
+        # as in a tuple of four floats.
         bbox_new = tuple(map("{:.3f}".format, bbox))
         if bbox_new == self.bbox:
             return self.feature_subset
         else:
-            self.add(features_in_bbox(conn, bbox_new), bbox_new)
+            self.add(get_features_in_bbox(conn, bbox), bbox_new)
             return self.feature_subset
 
     def clear(self):
@@ -52,19 +51,33 @@ class BBOXCache:
         self.bbox = ()
 
 
-def features_in_bbox(conn, bbox):
-    # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
-    query= f"""
-    SELECT identificatie
-    FROM bag_index
-    WHERE fid IN
-          (SELECT id
-           FROM rtree_bag_index_geom
-           WHERE minx <= {bbox[2]}
-             AND maxx >= {bbox[0]}
-             AND miny <= {bbox[3]}
-             AND maxy >= {bbox[1]});
-    """.replace("\n", "")
+def get_all_object_ids(conn) -> Tuple[str]:
+    """Retrieve all the object ids from the DB"""
+    # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead
+    # of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
+    query = """
+                SELECT co.object_id
+                FROM cjdb.city_object co;
+            """.replace("\n", "")
+    return tuple(t[0] for t in conn.get_query(query))
+
+
+def get_features_in_bbox(conn, bbox: List[float]) -> Tuple[str]:
+    """
+    Retrieve from the DB all the object ids of the buildings
+    lying in the input bbox.
+    """
+    # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead
+    # of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
+    query = f"""
+                SELECT co.object_id
+                FROM cjdb.city_object co
+                WHERE st_within(co.ground_geometry,
+                ST_MakeEnvelope({bbox[0]},
+                                {bbox[1]},
+                                {bbox[2]},
+                                {bbox[3]},  7415));
+            """.replace("\n", "")
     return tuple(t[0] for t in conn.get_query(query))
 
 
@@ -106,26 +119,26 @@ def take_closest(myList, myNumber):
         return before
 
 
-# Computing Morton-code. Reference: https://github.com/trevorprater/pymorton ---
+# Computing Morton-code. Reference: https://github.com/trevorprater/pymorton
 
 def __part1by1_64(n):
     """64-bit mask"""
-    n &= 0x00000000ffffffff                  # binary: 11111111111111111111111111111111,                                len: 32
-    n = (n | (n << 16)) & 0x0000FFFF0000FFFF # binary: 1111111111111111000000001111111111111111,                        len: 40
-    n = (n | (n << 8))  & 0x00FF00FF00FF00FF # binary: 11111111000000001111111100000000111111110000000011111111,        len: 56
-    n = (n | (n << 4))  & 0x0F0F0F0F0F0F0F0F # binary: 111100001111000011110000111100001111000011110000111100001111,    len: 60
-    n = (n | (n << 2))  & 0x3333333333333333 # binary: 11001100110011001100110011001100110011001100110011001100110011,  len: 62
-    n = (n | (n << 1))  & 0x5555555555555555 # binary: 101010101010101010101010101010101010101010101010101010101010101, len: 63
+    n &= 0x00000000ffffffff                  # binary: 11111111111111111111111111111111,                                len: 32 # noqa
+    n = (n | (n << 16)) & 0x0000FFFF0000FFFF # binary: 1111111111111111000000001111111111111111,                        len: 40 # noqa
+    n = (n | (n << 8))  & 0x00FF00FF00FF00FF # binary: 11111111000000001111111100000000111111110000000011111111,        len: 56 # noqa
+    n = (n | (n << 4))  & 0x0F0F0F0F0F0F0F0F # binary: 111100001111000011110000111100001111000011110000111100001111,    len: 60 # noqa
+    n = (n | (n << 2))  & 0x3333333333333333 # binary: 11001100110011001100110011001100110011001100110011001100110011,  len: 62 # noqa
+    n = (n | (n << 1))  & 0x5555555555555555 # binary: 101010101010101010101010101010101010101010101010101010101010101, len: 63 # noqa
     return n
 
 
 def __unpart1by1_64(n):
-    n &= 0x5555555555555555                  # binary: 101010101010101010101010101010101010101010101010101010101010101, len: 63
-    n = (n ^ (n >> 1))  & 0x3333333333333333 # binary: 11001100110011001100110011001100110011001100110011001100110011,  len: 62
-    n = (n ^ (n >> 2))  & 0x0f0f0f0f0f0f0f0f # binary: 111100001111000011110000111100001111000011110000111100001111,    len: 60
-    n = (n ^ (n >> 4))  & 0x00ff00ff00ff00ff # binary: 11111111000000001111111100000000111111110000000011111111,        len: 56
-    n = (n ^ (n >> 8))  & 0x0000ffff0000ffff # binary: 1111111111111111000000001111111111111111,                        len: 40
-    n = (n ^ (n >> 16)) & 0x00000000ffffffff # binary: 11111111111111111111111111111111,                                len: 32
+    n &= 0x5555555555555555                  # binary: 101010101010101010101010101010101010101010101010101010101010101, len: 63 # noqa
+    n = (n ^ (n >> 1))  & 0x3333333333333333 # binary: 11001100110011001100110011001100110011001100110011001100110011,  len: 62 # noqa
+    n = (n ^ (n >> 2))  & 0x0f0f0f0f0f0f0f0f # binary: 111100001111000011110000111100001111000011110000111100001111,    len: 60 # noqa
+    n = (n ^ (n >> 4))  & 0x00ff00ff00ff00ff # binary: 11111111000000001111111100000000111111110000000011111111,        len: 56 # noqa
+    n = (n ^ (n >> 8))  & 0x0000ffff0000ffff # binary: 1111111111111111000000001111111111111111,                        len: 40 # noqa
+    n = (n ^ (n >> 16)) & 0x00000000ffffffff # binary: 11111111111111111111111111111111,                                len: 32 # noqa
     return n
 
 
@@ -152,13 +165,13 @@ def deinterleave(n):
 def morton_code(x: float, y: float):
     """Takes an (x,y) coordinate tuple and computes their Morton-key.
 
-    Casts float to integers by multiplying them with 100 (millimeter precision).
+    Casts float to integers by multiplying them with
+    100 (millimetre precision).
     """
     return interleave(int(x * 100), int(y * 100))
 
 
 def rev_morton_code(morton_key: int) -> Tuple[float, float]:
     """Get the coordinates from a Morton-key"""
-    x,y = deinterleave(morton_key)
-    return float(x)/100.0, float(y)/100.0
-
+    x, y = deinterleave(morton_key)
+    return float(x) / 100.0, float(y) / 100.0
