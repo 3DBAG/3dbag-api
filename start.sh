@@ -5,7 +5,7 @@ docker build -t ${server} .
 docker run \
   --platform linux/amd64\
   --rm \
-  -p 56733:80 \
+  -p 3200:3200 \
   -p 5433:5433 \
   --name=${server} \
   -e APP_CONFIG="/app/3dbag_api_settings.cfg" \

@@ -1,8 +1,12 @@
 #!/bin/bash
 server="3dbag-api.test"
+docker container stop ${server} || true
 docker build -t ${server} .
-docker run -d -p 56733:80 \
+docker run \
+  --platform linux/amd64\
+  --rm \
+ --network="host" \
   --name=${server} \
-  -e APP_CONFIG="/app/3dbag_api_settings_godzilla_docker.cfg" \
-  -v /data/work/bdukai/3dbag:/data \
+  -e APP_CONFIG="/app/3dbag_api_settings.cfg" \
+  -v ${HOME}/data/3DBAGplus:/data/3DBAGplus \
   -v "$(pwd)":/app ${server}
