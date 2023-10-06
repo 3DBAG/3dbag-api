@@ -13,6 +13,5 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 auth = HTTPBasicAuth()
 db_users = SQLAlchemy(app)
-logging.debug(f"configuration: {app.config}")
 
 from app import views
