@@ -5,6 +5,7 @@ docker build -t ${api} .
 docker run \
   --platform linux/amd64\
   --rm \
+  -d \
   --env-file ".env"\
   --network="host" \
   --name=${api} \
