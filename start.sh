@@ -1,14 +1,14 @@
 #!/bin/bash
-server="3dbag-api.test"
-docker container stop ${server} || true
-docker build -t ${server} .
+api="3dbag-api"
+docker container stop ${api} || true
+docker build -t ${api} .
 docker run \
   --platform linux/amd64\
   --rm \
   --env-file ".env"\
   -p 3200:3200 \
   -p 5433:5433 \
-  --name=${server} \
-  -v "$(pwd)":/app ${server} 
+  --name=${api} \
+  -v "$(pwd)":/app ${api} 
 
   
