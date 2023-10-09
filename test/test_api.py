@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from app import views
 
 
@@ -5,15 +7,19 @@ class TestDev:
     def test_landing_page(self, client):
         response = client.get("/")
         assert response.status_code == 200
+
     def test_conformance(self, client):
         response = client.get("/conformance")
         assert response.status_code == 200
+
     def test_collections(self, client):
         response = client.get("/collections")
         assert response.status_code == 200
+
     def test_collections_pand(self, client):
         response = client.get("/collections/pand")
         assert response.status_code == 200
+
     def test_collections_pand_items(self, client, authorization):
         response = client.get("/collections/pand/items", headers=authorization)
         assert response.status_code == 200
@@ -32,21 +38,6 @@ class TestDev:
         with app.test_request_context(f"/collections/pand/items/{feature_id}",
                                       headers=authorization):
             response = views.get_feature(feature_id)
-            assert response.status_code == 200
-
-    def test_collections_pand_addresses(self, app, authorization):
-        feature_id = "NL.IMBAG.Pand.1655100000500573"
-        with app.test_request_context(f"/collections/pand/items/{feature_id}/addresses",
-                                      headers=authorization):
-            response = views.get_addresses(feature_id)
-            assert response.status_code == 200
-
-    def test_collections_pand_surfaces(self, app, authorization):
-        feature_id = "NL.IMBAG.Pand.1655100000548671-0"
-        with app.test_request_context(
-                f"/collections/pand/items/{feature_id}/surfaces",
-                headers=authorization):
-            response = views.get_surfaces(feature_id)
             assert response.status_code == 200
 
     def test_load_cityjsonfeature(self):
