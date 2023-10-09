@@ -12,7 +12,7 @@ from cjdb.modules.exporter import Exporter
 from flask import (abort, jsonify, make_response, render_template,
                    request, url_for)
 
-from app import app, auth, db, db_users, index, parser
+from app import app, auth, db, db_users, index
 from app.parameters import Parameters, DEFAULT_CRS, STORAGE_CRS, DEFAULT_BBOX
 from app.authentication import UserAuth, Permission
 

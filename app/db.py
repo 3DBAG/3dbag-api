@@ -4,6 +4,7 @@ Copyright 2022 3DGI <info@3dgi.nl>
 """
 
 import logging
+import os
 import sqlite3
 import psycopg2 as pg
 from psycopg2.extensions import connection
@@ -11,12 +12,16 @@ from psycopg2.extensions import connection
 
 def get_connection() -> connection:
     '''
-        This function connects to the database server configured in
-        ~/.pg_service.conf named as `baseregisters_godzilla`
+        This function connects to the database server
+        based on environment variables.
     '''
     try:
         print("Connecting to Godzilla DB")
-        conn = pg.connect('service=baseregisters_godzilla')
+        conn = pg.connect(user=os.environ["POSTGRES_USER"],
+                          host=os.environ["POSTGRES_HOST"],
+                          port=os.environ["POSTGRES_PORT"],
+                          database=os.environ["POSTGRES_DB"],
+                          password=os.environ["POSTGRES_PWD"])
         conn.set_session(isolation_level="READ COMMITTED")
     except pg.OperationalError as e:
         print(f"DB connection failed! {e}")
