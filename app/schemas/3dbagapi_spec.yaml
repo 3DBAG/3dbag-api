@@ -143,49 +143,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
-  '/collections/pand/items/{featureId}/addresses':
-    get:
-      tags:
-        - Data
-      summary: fetch the addresses of `featureId`
-      description: |-
-        Fetch the addresses that are located within the building `featureId`.
-      operationId: getFeatureAddresses
-      security:
-        - ApiKeyAuth: [ ]
-      parameters:
-        - $ref: '#/components/parameters/featureId'
-      responses:
-        '200':
-          $ref: '#/components/responses/FeatureAddresses'
-        '400':
-          $ref: '#/components/responses/InvalidParameter'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-  '/collections/pand/items/{featureId}/surfaces':
-    get:
-      tags:
-        - Data
-      summary: fetch a single feature
-      description: |-
-        Fetch information about the surfaces of `featureId`.
-      operationId: getFeatureSurfaces
-      security:
-        - ApiKeyAuth: [ ]
-      parameters:
-        - $ref: '#/components/parameters/featureId'
-      responses:
-        '200':
-          $ref: '#/components/responses/FeatureSurfaces'
-        '400':
-          $ref: '#/components/responses/InvalidParameter'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/ServerError'
-
 components:
   parameters: 
     bbox:
@@ -527,55 +484,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/link'
-    featureJSONAddressCollection:
-      type: object
-      required:
-        - links
-        - addresses
-      properties:
-        addresses:
-          type: array
-          items:
-            $ref: '#/components/schemas/featureJSONAddress'
-        links:
-          type: array
-          items:
-            $ref: '#/components/schemas/link'
-    featureJSONSurfaces:
-      type: object
-      required:
-        - type
-        - properties
-      properties:
-        area_ground:
-          type: number
-          description: 'Area of the ground surface of the building model. Unit: m2'
-        area_roof_flat:
-          type: number
-        area_roof_sloped:
-          type: number
-        area_shared_wall:
-          type: number
-        area_exterior_wall:
-          type: number
-        identificatie:
-          $ref: '#/components/parameters/featureId'
-        oorspronkelijkbouwjaar:
-          type: string
-        pw_actueel:
-          type: boolean
-        status:
-          type: string
-        oppervlakte_bag_geometrie:
-          type: number
-        tile:
-          type: string
-        id:
-          type: string
-        links:
-          type: array
-          items:
-            $ref: '#/components/schemas/link'
     landingPage:
       type: object
       required:
@@ -811,20 +719,6 @@ components:
         application/city+json:
           schema:
             $ref: '#/components/schemas/featureCityJSON'
-    FeatureSurfaces:
-      description: |-
-        Fetch information about the surfaces of the feature with id `featureId`.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/featureJSONSurfaces'
-    FeatureAddresses:
-      description: |-
-        Fetch the addresses related to the feature with id `featureId`.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/featureJSONAddressCollection'
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
