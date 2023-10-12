@@ -16,7 +16,7 @@ def get_connection() -> connection:
         based on environment variables.
     '''
     try:
-        print("Connecting to Godzilla DB")
+        logging.info("Connecting to Godzilla DB")
         conn = pg.connect(user=os.environ["POSTGRES_USER"],
                           host=os.environ["POSTGRES_HOST"],
                           port=os.environ["POSTGRES_PORT"],
@@ -24,7 +24,7 @@ def get_connection() -> connection:
                           password=os.environ["POSTGRES_PWD"])
         conn.set_session(isolation_level="READ COMMITTED")
     except pg.OperationalError as e:
-        print(f"DB connection failed! {e}")
+        logging.error(f"DB connection failed! {e}")
         raise e
     
     return conn
