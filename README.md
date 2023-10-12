@@ -1,17 +1,5 @@
 # 3D BAG API
 
-## Data:
-
-To run the server locally or to start a development server, you need data. 
-Test data is available [here](https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz).
-Download it somewhere in your home directory. 
-
-```bash
-curl https://data.3dgi.xyz/3dbag-api-test-data/3DBAGplus.tar.xz | tar -xz
-```
-
-The modify the links in configuration file  3dbag_api_setting_local.cfg to point at where the data was stored. 
-
 ## Run Locally:
 
 You first need to install [poetry](https://python-poetry.org/docs/) and enable the generation of vitual environments within a project:
@@ -27,25 +15,46 @@ Then, from within the repo you can create a new virtual environmnet with:
   source .venv/bin/activate
 ```
 
-Then run:
+Then export the following variables:
+```
+POSTGRES_USER=<user>
+POSTGRES_PWD=<password>
+POSTGRES_DB=baseregisters
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5433
+POSTGRES_URL=postgresql://<user>:<password>@localhost:5433/baseregisters
+```
+
+
+Finally, with an active tunnel to Godzilla, run:
 
 ```bash
-  export APP_CONFIG="$(pwd)/3dbag_api_settings_local.cfg" 
-  python3 start.py
   flask --app app  --debug run --host=0.0.0.0 --port=80  
 ```
 
 and check: http://localhost:80
 
 ## Development server
-To start the development server you can run the following:
+To start the development server first create an .env file with the followoing information:
+
+```
+POSTGRES_USER=<user>
+POSTGRES_PWD=<password>
+POSTGRES_DB=baseregisters
+POSTGRES_HOST=host.docker.internal
+POSTGRES_PORT=5433
+POSTGRES_URL=postgresql://<user>:<password>@host.docker.internal:5433/baseregisters
+```
+
+
+Then you can run the following:
 
 ```bash
 	poetry export --without dev --without-hashes --output ./requirements.txt --format "requirements.txt"
 	sh start.sh
 ```
 
-and check: http://localhost:56733
+and check: http://localhost:3200
 
 If you are working on an Apple M1 machine and you need to add the flag  `--platform linux/amd64\` to the docker run command in the `start.sh` file
 
