@@ -18,7 +18,7 @@ def load_metadata(connection):
     ) as exporter:
         exporter.get_data()
         metadata = exporter.get_metadata()
-    return metadata
+    return json.loads(metadata)
 
 
 def load_cityjsonfeature(featureId, connection) -> str:
