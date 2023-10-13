@@ -86,7 +86,7 @@ def conformance():
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
             "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
             "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
-            "https://www.cityjson.org/specs/1.1.1/"
+            "https://cityjson.org/specs/2.0.0/"
         ]
     }
 
