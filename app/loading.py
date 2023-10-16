@@ -29,6 +29,7 @@ def load_cityjsonfeature(featureId, connection) -> str:
         sqlquery=f"SELECT '{featureId}' as object_id",
         output=None,
     ) as exporter:
+        logging.info(exporter.sqlquery)
         exporter.get_data()
         feature = exporter.get_features()
     return json.loads(feature[0])
