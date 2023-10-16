@@ -10,12 +10,12 @@ info:
     The 3DBAG is updated regularly, keeping it up-to-date with the latest openly 
     available building stock and elevation information.
     
-    The 3DBAG is created and maintained by 3DGI.
+    The 3DBAG is maintained by tudelft3d and 3DGI.
     
-    Copyright (c) 2023 3DGI.
+    Copyright (c) 2023 tudelft3d + 3DGI.
   version: 0.1.0
   contact:
-    name: "3DGI"
+    name: "3DBAG support"
     email: info@3dbag.nl
     url: https://docs.3dbag.nl/en/contact/
   license:
