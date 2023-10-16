@@ -55,7 +55,8 @@ def load_cityjsonfeatures(featureIds: List[str], connection) -> str:
 def get_paginated_features(features,
                            url: str,
                            connection,
-                           parameters: Parameters):
+                           parameters: Parameters,
+                           metadata: str):
     """From https://stackoverflow.com/a/55546722"""
     logging.debug(
         f"""Pagination started with limit {parameters.limit}
@@ -115,7 +116,7 @@ def get_paginated_features(features,
         obj["numberReturned"] = 0
         obj["features"] = []
     else:
-        obj["metadata"] = load_metadata(connection=connection)
+        obj["metadata"] = metadata
         res = features[
             (parameters.offset - 1):(parameters.offset - 1 + parameters.limit)
         ]

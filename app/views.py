@@ -15,7 +15,8 @@ from app import app, auth, db, db_users, index, loading
 from app.parameters import Parameters, DEFAULT_CRS, STORAGE_CRS
 from app.authentication import UserAuth, Permission
 
-DEFAULT_LIMIT = 50
+DEFAULT_LIMIT = 10
+DEFAULT_MAX_LIMIT = 1000
 DEFAULT_OFFSET = 1
 
 bbox_cache = index.BBOXCache()
@@ -23,6 +24,8 @@ bbox_cache = index.BBOXCache()
 conn = db.Db()
 logging.debug("Collecting all available object ids.")
 DEFAULT_FEATURE_SET = index.get_all_object_ids(conn)
+logging.debug("Loading metadata.")
+METADATA = loading.load_metadata(conn)
 conn.conn.close()
 
 
@@ -117,7 +120,7 @@ def pand():
     return {
         "id": "pand",
         "title": "Pand",
-        "description": "3D building models based on the 'pand' layer of the BAG data set.",
+        "description": "3D building models based on the 'pand' layer of the BAG dataset.",
         "extent": {
             "spatial": {
                 "bbox": [
@@ -205,7 +208,8 @@ def pand_items():
     response = make_response(jsonify(loading.get_paginated_features(
         feature_subset,
         url_for("pand_items", _external=True), conn,
-        query_params)), 200)
+        query_params,
+        METADATA)), 200)
     response.headers["Content-Crs"] = f"<{query_params.crs}>"
     conn.conn.close()
     return response
@@ -232,7 +236,6 @@ def get_feature(featureId):
         bbox=request.args.get("bbox", None)
     )
     conn = db.Db()
-    metadata = loading.load_metadata(conn)
     cityjsonfeature = loading.load_cityjsonfeature(featureId, conn)
     conn.conn.close()
 
@@ -262,7 +265,7 @@ def get_feature(featureId):
         })
     response = make_response(jsonify({
         "id": cityjsonfeature["id"],
-        "metadata": metadata,
+        "metadata": METADATA,
         "feature": cityjsonfeature,
         "links": links
     }), 200)
