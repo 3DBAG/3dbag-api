@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List
+from typing import List, Tuple
 
 from cjdb.modules.exporter import Exporter
 from flask import request
@@ -8,20 +8,9 @@ from flask import request
 from app.parameters import Parameters
 
 
-def load_metadata(connection):
-    """Loads the metadata - same for all features."""
-    with Exporter(
-        connection=connection.conn,
-        schema="cjdb",
-        sqlquery="SELECT object_id from cjdb.city_object limit 1",
-        output=None,
-    ) as exporter:
-        exporter.get_data()
-        metadata = exporter.get_metadata()
-    return json.loads(metadata)
-
-
-def load_cityjsonfeature(featureId, connection) -> str:
+def load_cityjsonfeature(featureId: List[str],
+                         connection) -> \
+        Tuple[str, str]:
     """Loads a single feature."""
     with Exporter(
         connection=connection.conn,
@@ -32,10 +21,13 @@ def load_cityjsonfeature(featureId, connection) -> str:
         logging.info(exporter.sqlquery)
         exporter.get_data()
         feature = exporter.get_features()
-    return json.loads(feature[0])
+        metadata = exporter.get_metadata()
+    return (json.loads(metadata), json.loads(feature[0]))
 
 
-def load_cityjsonfeatures(featureIds: List[str], connection) -> str:
+def load_cityjsonfeatures(featureIds: List[str],
+                          connection) -> \
+        Tuple[str, List[str]]:
     """Loads a group of features."""
     feature_ids_str = (
         str(
@@ -50,14 +42,15 @@ def load_cityjsonfeatures(featureIds: List[str], connection) -> str:
     ) as exporter:
         exporter.get_data()
         features = exporter.get_features()
-    return [json.loads(feature) for feature in features]
+        metadata = exporter.get_metadata()
+    return (json.loads(metadata),
+            [json.loads(feature) for feature in features])
 
 
 def get_paginated_features(features,
                            url: str,
                            connection,
-                           parameters: Parameters,
-                           metadata: str):
+                           parameters: Parameters):
     """From https://stackoverflow.com/a/55546722"""
     logging.debug(
         f"""Pagination started with limit {parameters.limit}
@@ -117,10 +110,12 @@ def get_paginated_features(features,
         obj["numberReturned"] = 0
         obj["features"] = []
     else:
-        obj["metadata"] = metadata
+        
         res = features[
             (parameters.offset - 1):(parameters.offset - 1 + parameters.limit)
         ]
+        metadata, cityjsonfeatures = load_cityjsonfeatures(res, connection)
+        obj["metadata"] = metadata
         obj["numberReturned"] = len(res)
-        obj["features"] = load_cityjsonfeatures(res, connection)
+        obj["features"] = cityjsonfeatures
     return obj

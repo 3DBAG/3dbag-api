@@ -24,8 +24,6 @@ bbox_cache = index.BBOXCache()
 conn = db.Db()
 logging.debug("Collecting all available object ids.")
 DEFAULT_FEATURE_SET = index.get_all_object_ids(conn)
-logging.debug("Loading metadata.")
-METADATA = loading.load_metadata(conn)
 conn.conn.close()
 
 
@@ -208,8 +206,7 @@ def pand_items():
     response = make_response(jsonify(loading.get_paginated_features(
         feature_subset,
         url_for("pand_items", _external=True), conn,
-        query_params,
-        METADATA)), 200)
+        query_params)), 200)
     response.headers["Content-Crs"] = f"<{query_params.crs}>"
     conn.conn.close()
     return response
@@ -236,7 +233,7 @@ def get_feature(featureId):
         bbox=request.args.get("bbox", None)
     )
     conn = db.Db()
-    cityjsonfeature = loading.load_cityjsonfeature(featureId, conn)
+    metadata, cityjsonfeature = loading.load_cityjsonfeature(featureId, conn)
     conn.conn.close()
 
     links = [
@@ -265,7 +262,7 @@ def get_feature(featureId):
         })
     response = make_response(jsonify({
         "id": cityjsonfeature["id"],
-        "metadata": METADATA,
+        "metadata": metadata,
         "feature": cityjsonfeature,
         "links": links
     }), 200)
