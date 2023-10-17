@@ -90,9 +90,9 @@ paths:
     get:
       tags:
         - Data
-      summary: fetch pand features
+      summary: Fetch 3DBAG features
       description: |-
-        Fetch features of the feature collection with id `pand`.
+        Fetch features from the 'pand' collection/
       operationId: getFeatures
       parameters:
         - $ref: '#/components/parameters/limit'
@@ -113,7 +113,7 @@ paths:
     get:
       tags:
         - Data
-      summary: fetch a single 3DBAG feature
+      summary: Fetch a single 3DBAG feature.
       description: |-
         Fetches a 3DBAG object/feature in CityJSONFeatures format.
         The feature includes all Levels of Detail.
