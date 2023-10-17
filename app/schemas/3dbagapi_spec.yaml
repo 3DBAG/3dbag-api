@@ -291,7 +291,7 @@ components:
           type: array
           items:
             type: string
-            example: "https://cityjson.org/specs/2.0.0/"
+            example: "https://cityjson.org/specs/1.1.1/"
     extent:
       description: |-
         The extent of the features in the collection. In the Core only spatial and temporal
@@ -515,7 +515,7 @@ components:
             $ref: '#/components/schemas/confClasses'
           example:
             conformsTo:
-              - 'https://cityjson.org/specs/2.0.0/'
+              - 'https://cityjson.org/specs/1.1.1/'
     Collections:
       description: |-
         The feature collections shared by this API.
