@@ -16,7 +16,7 @@ from app.parameters import Parameters, DEFAULT_CRS, STORAGE_CRS
 from app.authentication import UserAuth, Permission
 
 DEFAULT_LIMIT = 10
-DEFAULT_MAX_LIMIT = 1000
+DEFAULT_MAX_LIMIT = 10000
 DEFAULT_OFFSET = 1
 
 bbox_cache = index.BBOXCache()
@@ -31,7 +31,7 @@ conn.conn.close()
 def landing_page():
     return {
         "title": "3DBAG API",
-        "description": "3DBAG is an extended version of the 3D BAG data set. It contains additional information that is either derived from the 3D BAG, or integrated from other data sources.", # noqa
+        "description": "3DBAG is an extended version of the 3DBAG data set. It contains additional information that is either derived from the 3DBAG, or integrated from other data sources.", # noqa
         "links": [
             {
                 "href": request.url,

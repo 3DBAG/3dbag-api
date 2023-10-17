@@ -1,4 +1,4 @@
-# 3D BAG API
+# 3DBAG API
 
 ## Run Locally:
 
@@ -178,7 +178,7 @@ Extract requirements file:
 poetry export -f requirements.txt -o requirements.txt --without-hashes
 ```
 
-Start the 3D BAG API service (from start.sh)
+Start the 3DBAG API service (from start.sh)
 
 ```shell
 server="3dbag-api.test"
