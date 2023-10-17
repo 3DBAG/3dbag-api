@@ -47,7 +47,7 @@ def load_cityjsonfeatures(featureIds: List[str],
             [json.loads(feature) for feature in features])
 
 
-def get_paginated_features(features,
+def get_paginated_features(features: List[str],
                            url: str,
                            connection,
                            parameters: Parameters):
