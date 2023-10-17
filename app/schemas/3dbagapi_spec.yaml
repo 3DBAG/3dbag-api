@@ -94,8 +94,6 @@ paths:
       description: |-
         Fetch features of the feature collection with id `pand`.
       operationId: getFeatures
-      security:
-        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/offset'
@@ -120,8 +118,6 @@ paths:
         Fetches a 3DBAG object/feature in CityJSONFeatures format.
         The feature includes all Levels of Detail.
       operationId: getFeatureId
-      security:
-        - ApiKeyAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/featureId'
         - $ref: '#/components/parameters/crs'
@@ -637,8 +633,3 @@ components:
         application/city+json:
           schema:
             $ref: '#/components/schemas/featureCityJSON'
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-KEY
