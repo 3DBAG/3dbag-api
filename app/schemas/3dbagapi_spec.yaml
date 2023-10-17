@@ -23,9 +23,6 @@ info:
     url: https://creativecommons.org/licenses/by/4.0
   x-logo:
     url: https://3dgi.nl/img/Logo-02.png
-servers:
-  - url: api.3dbag.nl
-    description: 3DBAG API production server
 tags:
   - name: Capabilities
     description: |-
