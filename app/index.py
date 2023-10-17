@@ -77,7 +77,8 @@ def get_features_in_bbox(conn, bbox: List[float]) -> Tuple[str]:
                                 {bbox[1]},
                                 {bbox[2]},
                                 {bbox[3]},  7415)
-                ORDER BY co.object_id);
+                )
+                ORDER BY co.object_id;
             """.replace("\n", "")
     return tuple(t[0] for t in conn.get_query(query))
 
