@@ -127,12 +127,6 @@ def pand():
                 ],
                 "crs": STORAGE_CRS
             },
-            "temporal": {
-                "interval": [
-                    None,
-                    "2019-12-31T24:59:59Z"
-                ]
-            }
         },
         "itemType": "feature",
         "crs": [
