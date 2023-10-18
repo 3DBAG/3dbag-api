@@ -10,9 +10,9 @@ info:
     The 3DBAG is updated regularly, keeping it up-to-date with the latest openly 
     available building stock and elevation information.
     
-    The 3DBAG is maintained by 3D GeoInformation group and 3DGI.
+    The 3DBAG is maintained by the 3D geoinformation group and 3DGI.
     
-    Copyright (c) 2023 3D GeoInformation group + 3DGI.
+    Copyright (c) 2023 3D geoinformation group and 3DGI.
   version: 0.1.0
   contact:
     name: "3DBAG support"
@@ -21,15 +21,16 @@ info:
   license:
     name: CC-BY-4.0
     url: https://creativecommons.org/licenses/by/4.0
-  x-logo:
-    url: https://3dgi.nl/img/Logo-02.png
+servers:
+  - url: api.3dbag.nl
+    description: 3DBAG API production server
 tags:
   - name: Capabilities
     description: |-
-      Essential characteristics of this API
+      The capabilities of the 3DBAG API 
   - name: Data
     description: |-
-      Access to data (features)
+      Operations that can be used to retrieve the actual 3DBAG data
 paths:
   '/':
     get:
@@ -37,8 +38,8 @@ paths:
         - Capabilities
       summary: Landing Page
       description: |-
-        The landing page provides links to the API definition, the conformance
-        statements and to the feature collections in this dataset.
+        Serves a JSON document with links to the 3DBAG API definition, the conformance
+        declaration, and the feature collections in this dataset.
       operationId: getLandingPage
       responses:
         '200':
@@ -49,10 +50,9 @@ paths:
     get:
       tags:
         - Capabilities
-      summary: Information about specifications that this API conforms to
+      summary: Declaration of conformance classes
       description: |-
-        A list of all conformance classes specified in a standard that the
-        server conforms to.
+        Lists all the conformance classes the 3DBAG API implements and conforms to.
       operationId: getConformanceDeclaration
       responses:
         '200':
@@ -63,7 +63,9 @@ paths:
     get:
       tags:
         - Capabilities
-      summary: The feature collections in the dataset
+      summary: List available feature collections.
+      description: |-
+        Lists the available feature collections. Currently there is only the `pand` collection.
       operationId: getCollections
       responses:
         '200':
@@ -74,7 +76,10 @@ paths:
     get:
       tags:
         - Capabilities
-      summary: 3D building models based on the 'pand' layer of the BAG data set
+      summary: Describe 'pand' collection
+      description: |-
+        The pand collection contains all the buildings from the 3DBAG dataset in all Levels of Detail. 
+        The 3DBAG is based on the 'pand' layer of the BAG dataset.
       operationId: describeCollection
       responses:
         '200':
@@ -87,9 +92,23 @@ paths:
     get:
       tags:
         - Data
-      summary: Fetch 3DBAG features
+      summary: Fetch pand features
       description: |-
-        Fetch features from the 'pand' collection/
+        Fetch features from the 'pand' collection in CityJSONFeatures format. 
+        The features includes all Levels of Detail. 
+        
+        To support access to
+        larger collections without overloading the client, the API supports
+        paged access with links to the next page, if more features are selected
+        that the page size.
+        
+        The `bbox` parameter can be used to select only a
+        subset of the features in the collection (the features that are in the
+        bounding box). The `bbox` parameter matches all features
+        in the collection that are not associated with a location, too.
+
+        The `limit` and `offset` parameters may be used to control the subset of the
+        selected features that should be returned in the response.
       operationId: getFeatures
       parameters:
         - $ref: '#/components/parameters/limit'
@@ -110,10 +129,10 @@ paths:
     get:
       tags:
         - Data
-      summary: Fetch a single 3DBAG feature.
+      summary: Fetch a specific pand feature.
       description: |-
-        Fetches a 3DBAG object/feature in CityJSONFeatures format.
-        The feature includes all Levels of Detail.
+        Fetches a specific pand feature by it's featureId (ie. the BAG `identificatie` attribute).
+        The feature is served in the CityJSONFeatures format and includes all Levels of Detail.
       operationId: getFeatureId
       parameters:
         - $ref: '#/components/parameters/featureId'
@@ -157,7 +176,8 @@ components:
       name: bbox-crs
       description: |-
         Asserts the CRS used for the coordinate values of the bbox parameter. 
-        The default is EPSG:7415.
+        The default is `https://www.opengis.net/def/crs/EPSG/0/7415`.
+        Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported.
       example: "https://www.opengis.net/def/crs/EPSG/0/7415"
       in: query
       required: false
@@ -170,7 +190,8 @@ components:
       name: crs
       description: |-
         Required CRS for the response. 
-        The default is EPSG:7415.
+        The default is `https://www.opengis.net/def/crs/EPSG/0/7415`.
+        Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported.
       example: "https://www.opengis.net/def/crs/EPSG/0/7415"
       in: query
       required: false
@@ -182,8 +203,8 @@ components:
     featureId:
       name: featureId
       in: path
-      description: 3DBAG [`identificatie`](https://docs.3dbag.nl/en/schema/attributes/#identificatie)
-      example: "NL.IMBAG.Pand.0851100000000564-0"
+      description: The [`identificatie`](https://docs.3dbag.nl/en/schema/attributes/#identificatie) attribute from the (3D)BAG dataset.
+      example: "NL.IMBAG.Pand.0851100000000564"
       required: true
       schema:
         type: string
@@ -348,8 +369,7 @@ components:
             crs:
               description: |-
                 Coordinate reference system of the returned coordinates. 
-                Currently only `https://www.opengis.net/def/crs/EPSG/0/7415`
-                is supported.
+                Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported.
               type: string
               enum:
                 - 'https://www.opengis.net/def/crs/EPSG/0/7415'
@@ -413,7 +433,7 @@ components:
           example: Buildings
         description:
           type: string
-          example: Access to data about buildings in the Netherlands.
+          example: Access data about buildings in the Netherlands.
         links:
           type: array
           items:
@@ -592,21 +612,10 @@ components:
                 title: CC BY 4.0
     Features:
       description: |-
-        The response is a document consisting of features in the collection.
+        A document consisting of features in the collection.
         The features included in the response are determined by the server
-        based on the query parameters of the request. To support access to
-        larger collections without overloading the client, the API supports
-        paged access with links to the next page, if more features are selected
-        that the page size.
-        
-        The `bbox` parameter can be used to select only a
-        subset of the features in the collection (the features that are in the
-        bounding box). The `bbox` parameter matches all features
-        in the collection that are not associated with a location, too.
-
-        The `limit` parameter may be used to control the subset of the
-        selected features that should be returned in the response, the page size.
-        Each page includes information about the number of selected and
+        based on the query parameters of the request.
+        If paging is used each page includes information about the number of selected and
         returned features (`numberMatched` and `numberReturned`) as well as
         links to support paging (link relation `next`).
       content:
@@ -615,8 +624,7 @@ components:
             $ref: '#/components/schemas/featureCollection'
     Feature:
       description: |-
-        Fetch a single feature with id `featureId` in *CityJSONFeature* format.
-        
+        A single feature with in the *CityJSONFeature* format.
         Feature hierarchy is represented by by the link relations `child` and `parent`.
       content:
         application/city+json:
