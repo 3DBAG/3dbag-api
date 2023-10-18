@@ -134,7 +134,7 @@ def pand():
         ],
         "storageCrs": STORAGE_CRS,
         "version": {
-            "collection": "v2023.08.09",
+            "collection": "v2023.10.08",
             "api": "0.1"
         },
         "links": [
