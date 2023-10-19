@@ -1,10 +1,13 @@
+import logging
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
+
 from flask import abort
-import logging
 from pyproj import exceptions
+
 from app.transformations import (transform_bbox_from_default_to_storage,
                                  transform_bbox_from_storage_to_default)
+
 STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/7415"
 
 DEFAULT_BBOX = [
@@ -14,6 +17,9 @@ DEFAULT_BBOX = [
     623690
 ]
 
+DEFAULT_OFFSET = 1
+DEFAULT_LIMIT = 10
+DEFAULT_MAX_LIMIT = 100
 
 @dataclass
 class Parameters:
@@ -27,6 +33,8 @@ class Parameters:
     def __post_init__(self):
         try:
             self.limit = int(self.limit)
+            if self.limit > DEFAULT_MAX_LIMIT:
+                self.limit = DEFAULT_MAX_LIMIT
         except ValueError as error:
             logging.error(
                 "Invalid parameter value. Limit must be integer. %s",

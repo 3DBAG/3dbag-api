@@ -7,17 +7,13 @@ import logging
 from pathlib import Path
 
 import yaml
-
-from flask import (abort, jsonify, make_response, render_template,
-                   request, url_for)
+from flask import (abort, jsonify, make_response, render_template, request,
+                   url_for)
 
 from app import app, auth, db, db_users, index, loading
-from app.parameters import Parameters, STORAGE_CRS
-from app.authentication import UserAuth, Permission
-
-DEFAULT_LIMIT = 10
-DEFAULT_MAX_LIMIT = 10000
-DEFAULT_OFFSET = 1
+from app.authentication import Permission, UserAuth
+from app.parameters import (DEFAULT_LIMIT, DEFAULT_OFFSET, STORAGE_CRS,
+                            Parameters)
 
 bbox_cache = index.BBOXCache()
 
