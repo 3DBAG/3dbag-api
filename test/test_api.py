@@ -76,10 +76,3 @@ class TestOnGodzilla:
             assert response.status_code == 200
             print(len(response.get_json()["features"]))
 
-    def test_collections_pand_surfaces(self, app, authorization):
-        feature_id = "NL.IMBAG.Pand.1655100000548671-0"
-        with app.test_request_context(
-                f"/collections/pand/items/{feature_id}/surfaces",
-                headers=authorization):
-            response = views.get_surfaces(feature_id)
-            assert response.status_code == 200

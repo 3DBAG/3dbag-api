@@ -76,7 +76,9 @@ def get_features_in_bbox(conn, bbox: List[float]) -> Tuple[str]:
                 ST_MakeEnvelope({bbox[0]},
                                 {bbox[1]},
                                 {bbox[2]},
-                                {bbox[3]},  7415));
+                                {bbox[3]},  7415)
+                )
+                ORDER BY co.object_id;
             """.replace("\n", "")
     return tuple(t[0] for t in conn.get_query(query))
 
@@ -91,7 +93,7 @@ def read_tiles_to_shapely(tiles_json):
 
 
 def tiles_rtree(tiles_shapely):
-    """Create an STR-packed R-tree from the 3D BAG tile polygons.
+    """Create an STR-packed R-tree from the 3DBAG tile polygons.
 
     See https://shapely.readthedocs.io/en/stable/manual.html#str-packed-r-tree
     """

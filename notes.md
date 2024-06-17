@@ -14,7 +14,7 @@ Additionally, it seems that in order to be OGC conformant, we need to support,
 - some WGS84 CRS as the default CRS
 - temporal(datetime) queries.
 
-Neither of these make sense for the 3D BAG, because of the location and because there are multiple time fields for each object.
+Neither of these make sense for the 3DBAG, because of the location and because there are multiple time fields for each object.
 
 ## API authentication
 
