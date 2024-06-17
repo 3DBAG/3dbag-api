@@ -35,7 +35,7 @@ Finally, with an active tunnel to Godzilla, run:
 and check: http://localhost:80
 
 ## Development server
-To start the development server first create an .env file with the followoing information:
+To start the development server first create an .env file with the following information:
 
 ```
 POSTGRES_USER=<user>
