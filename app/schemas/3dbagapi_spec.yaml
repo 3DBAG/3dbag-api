@@ -21,9 +21,6 @@ info:
   license:
     name: CC-BY-4.0
     url: https://creativecommons.org/licenses/by/4.0
-servers:
-  - url: api.3dbag.nl
-    description: 3DBAG API production server
 tags:
   - name: Capabilities
     description: |-
