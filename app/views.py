@@ -1,4 +1,4 @@
-"""OGC Features API backed by CityJSON
+"""3DBAG Features API backed by CityJSON
 
 Copyright 2022 3DGI <info@3dgi.nl>
 """
@@ -7,17 +7,13 @@ import logging
 from pathlib import Path
 
 import yaml
-
-from flask import (abort, jsonify, make_response, render_template,
-                   request, url_for)
+from flask import (abort, jsonify, make_response, render_template, request,
+                   url_for)
 
 from app import app, auth, db, db_users, index, loading
-from app.parameters import Parameters, DEFAULT_CRS, STORAGE_CRS
-from app.authentication import UserAuth, Permission
-
-DEFAULT_LIMIT = 10
-DEFAULT_MAX_LIMIT = 10000
-DEFAULT_OFFSET = 1
+from app.authentication import Permission, UserAuth
+from app.parameters import (DEFAULT_LIMIT, DEFAULT_OFFSET, STORAGE_CRS,
+                            Parameters)
 
 bbox_cache = index.BBOXCache()
 
@@ -55,7 +51,7 @@ def landing_page():
                 "href": url_for("conformance", _external=True),
                 "rel": "conformance",
                 "type": "application/json",
-                "title": "OGC API conformance classes implemented by this server" # noqa
+                "title": "Conformance classes implemented by this server" # noqa
             },
             {
                 "href": url_for("collections", _external=True),
@@ -84,10 +80,7 @@ def api_html():
 def conformance():
     return {
         "conformsTo": [
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-            "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
-            "http://www.opengis.net/spec/ogcapi-features-2/1.0/conf/crs",
-            "https://cityjson.org/specs/2.0.0/"
+            "https://cityjson.org/specs/1.1.1/"
         ]
     }
 
@@ -107,7 +100,6 @@ def collections():
             },
         ],
         "crs": [
-            DEFAULT_CRS,
             STORAGE_CRS
         ]
     }
@@ -123,29 +115,22 @@ def pand():
             "spatial": {
                 "bbox": [
                     [
-                        3.3335406283191253,
-                        50.72794948839276,
-                        7.391791169364946,
-                        53.58254841348389
+                           10000,
+                            306250,
+                            287760,
+                            623690
                     ]
                 ],
-                "crs": DEFAULT_CRS
+                "crs": STORAGE_CRS
             },
-            "temporal": {
-                "interval": [
-                    None,
-                    "2019-12-31T24:59:59Z"
-                ]
-            }
         },
         "itemType": "feature",
         "crs": [
-            DEFAULT_CRS,
             STORAGE_CRS
         ],
         "storageCrs": STORAGE_CRS,
         "version": {
-            "collection": "v2023.08.09",
+            "collection": "v2023.10.08",
             "api": "0.1"
         },
         "links": [
@@ -190,8 +175,8 @@ def pand_items():
     query_params = Parameters(
         offset=request.args.get("offset", DEFAULT_OFFSET),
         limit=request.args.get("limit", DEFAULT_LIMIT),
-        crs=request.args.get("crs", DEFAULT_CRS),
-        bbox_crs=request.args.get("bbox-crs", DEFAULT_CRS),
+        crs=request.args.get("crs", STORAGE_CRS),
+        bbox_crs=request.args.get("bbox-crs", STORAGE_CRS),
         bbox=request.args.get("bbox", None)
     )
     conn = db.Db()
@@ -228,8 +213,8 @@ def get_feature(featureId):
     query_params = Parameters(
         offset=request.args.get("offset", DEFAULT_OFFSET),
         limit=request.args.get("limit", DEFAULT_LIMIT),
-        crs=request.args.get("crs", DEFAULT_CRS),
-        bbox_crs=request.args.get("bbox-crs", DEFAULT_CRS),
+        crs=request.args.get("crs", STORAGE_CRS),
+        bbox_crs=request.args.get("bbox-crs", STORAGE_CRS),
         bbox=request.args.get("bbox", None)
     )
     conn = db.Db()

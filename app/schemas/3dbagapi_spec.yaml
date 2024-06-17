@@ -10,9 +10,9 @@ info:
     The 3DBAG is updated regularly, keeping it up-to-date with the latest openly 
     available building stock and elevation information.
     
-    The 3DBAG is maintained by 3D GeoInformation group and 3DGI.
+    The 3DBAG is maintained by the 3D geoinformation group and 3DGI.
     
-    Copyright (c) 2023 3D GeoInformation group + 3DGI.
+    Copyright (c) 2023 3D geoinformation group and 3DGI.
   version: 0.1.0
   contact:
     name: "3DBAG support"
@@ -21,18 +21,13 @@ info:
   license:
     name: CC-BY-4.0
     url: https://creativecommons.org/licenses/by/4.0
-  x-logo:
-    url: https://3dgi.nl/img/Logo-02.png
-servers:
-  - url: api.3dbag.nl
-    description: 3DBAG API production server
 tags:
   - name: Capabilities
     description: |-
-      Essential characteristics of this API
+      The capabilities of the 3DBAG API 
   - name: Data
     description: |-
-      Access to data (features)
+      Operations that can be used to retrieve the actual 3DBAG data
 paths:
   '/':
     get:
@@ -40,8 +35,8 @@ paths:
         - Capabilities
       summary: Landing Page
       description: |-
-        The landing page provides links to the API definition, the conformance
-        statements and to the feature collections in this dataset.
+        Serves a JSON document with links to the 3DBAG API definition, the conformance
+        declaration, and the feature collections in this dataset.
       operationId: getLandingPage
       responses:
         '200':
@@ -52,10 +47,9 @@ paths:
     get:
       tags:
         - Capabilities
-      summary: Information about specifications that this API conforms to
+      summary: Declaration of conformance classes
       description: |-
-        A list of all conformance classes specified in a standard that the
-        server conforms to.
+        Lists all the conformance classes the 3DBAG API implements and conforms to.
       operationId: getConformanceDeclaration
       responses:
         '200':
@@ -66,7 +60,9 @@ paths:
     get:
       tags:
         - Capabilities
-      summary: The feature collections in the dataset
+      summary: List available feature collections.
+      description: |-
+        Lists the available feature collections. Currently there is only the `pand` collection.
       operationId: getCollections
       responses:
         '200':
@@ -77,7 +73,10 @@ paths:
     get:
       tags:
         - Capabilities
-      summary: 3D building models based on the 'pand' layer of the BAG data set
+      summary: Describe 'pand' collection
+      description: |-
+        The pand collection contains all the buildings from the 3DBAG dataset in all Levels of Detail. 
+        The 3DBAG is based on the 'pand' layer of the BAG dataset.
       operationId: describeCollection
       responses:
         '200':
@@ -90,19 +89,30 @@ paths:
     get:
       tags:
         - Data
-      summary: fetch pand features
+      summary: Fetch pand features
       description: |-
-        Fetch features of the feature collection with id `pand`.
+        Fetch features from the 'pand' collection in CityJSONFeatures format. 
+        The features includes all Levels of Detail. 
+        
+        To support access to
+        larger collections without overloading the client, the API supports
+        paged access with links to the next page, if more features are selected
+        that the page size.
+        
+        The `bbox` parameter can be used to select only a
+        subset of the features in the collection (the features that are in the
+        bounding box). The `bbox` parameter matches all features
+        in the collection that are not associated with a location, too.
+
+        The `limit` and `offset` parameters may be used to control the subset of the
+        selected features that should be returned in the response.
       operationId: getFeatures
-      security:
-        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/crs'
         - $ref: '#/components/parameters/bbox'
-        - $ref: '#/components/parameters/bbox-crs'
         - $ref: '#/components/parameters/crs'
+        - $ref: '#/components/parameters/bbox-crs'
       responses:
         '200':
           $ref: '#/components/responses/Features'
@@ -116,13 +126,11 @@ paths:
     get:
       tags:
         - Data
-      summary: fetch a single 3DBAG feature
+      summary: Fetch a specific pand feature.
       description: |-
-        Fetches a 3DBAG object/feature in CityJSONFeatures format.
-        The feature includes all Levels of Detail.
+        Fetches a specific pand feature by it's featureId (ie. the BAG `identificatie` attribute).
+        The feature is served in the CityJSONFeatures format and includes all Levels of Detail.
       operationId: getFeatureId
-      security:
-        - ApiKeyAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/featureId'
         - $ref: '#/components/parameters/crs'
@@ -149,9 +157,9 @@ components:
         * Upper right corner, coordinate axis 1 (max. x)
         * Upper right corner, coordinate axis 2 (max. y)
 
-        The default coordinate reference system is Amersfoort / RD New, EPSG:28992
-        (https://www.opengis.net/def/crs/EPSG/0/28992).
-        Currently only `https://www.opengis.net/def/crs/EPSG/0/28992` is supported as `bbox-crs`.
+        The default coordinate reference system is Amersfoort / RD New + NAP height, EPSG:7415
+        (https://www.opengis.net/def/crs/EPSG/0/7415).
+        Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported as `bbox-crs`.
       required: false
       schema:
         type: array
@@ -165,7 +173,9 @@ components:
       name: bbox-crs
       description: |-
         Asserts the CRS used for the coordinate values of the bbox parameter. 
-        The default is EPSG:7415.
+        The default is `https://www.opengis.net/def/crs/EPSG/0/7415`.
+        Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported.
+      example: "https://www.opengis.net/def/crs/EPSG/0/7415"
       in: query
       required: false
       schema:
@@ -177,7 +187,9 @@ components:
       name: crs
       description: |-
         Required CRS for the response. 
-        The default is EPSG:7415.
+        The default is `https://www.opengis.net/def/crs/EPSG/0/7415`.
+        Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported.
+      example: "https://www.opengis.net/def/crs/EPSG/0/7415"
       in: query
       required: false
       schema:
@@ -188,8 +200,8 @@ components:
     featureId:
       name: featureId
       in: path
-      description: 3DBAG [`identificatie`](https://docs.3dbag.nl/en/schema/attributes/#identificatie)
-      example: NL.IMBAG.Pand.0851100000000564-0
+      description: The [`identificatie`](https://docs.3dbag.nl/en/schema/attributes/#identificatie) attribute from the (3D)BAG dataset.
+      example: "NL.IMBAG.Pand.0851100000000564"
       required: true
       schema:
         type: string
@@ -202,12 +214,12 @@ components:
         Only items are counted that are on the first level of the collection in the response document.
         Nested objects contained within the explicitly requested items shall not be counted.
 
-        Minimum = 1. Maximum = 10000. Default = 10.
+        Minimum = 1. Maximum = 100. Default = 10.
       required: false
       schema:
         type: integer
         minimum: 1
-        maximum: 10000
+        maximum: 100
         default: 10
       style: form
       explode: false
@@ -233,15 +245,15 @@ components:
         id:
           description: identifier of the collection used, for example, in URIs
           type: string
-          example: address
+          example: "id"
         title:
           description: human readable title of the collection
           type: string
-          example: address
+          example: "title"
         description:
           description: a description of the features in the collection
           type: string
-          example: An address.
+          example: "A description"
         links:
           type: array
           items:
@@ -264,10 +276,9 @@ components:
           items:
             type: string
           default:
-            - http://www.opengis.net/def/crs/OGC/1.3/CRS84
+            - https://www.opengis.net/def/crs/EPSG/0/7415
           example:
-            - http://www.opengis.net/def/crs/OGC/1.3/CRS84
-            - http://www.opengis.net/def/crs/EPSG/0/4326
+            - https://www.opengis.net/def/crs/EPSG/0/7415
     collections:
       type: object
       required:
@@ -291,7 +302,7 @@ components:
           type: array
           items:
             type: string
-            example: "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core"
+            example: "https://cityjson.org/specs/1.1.1/"
     extent:
       description: |-
         The extent of the features in the collection. In the Core only spatial and temporal
@@ -335,22 +346,10 @@ components:
                   * Upper right corner, coordinate axis 2
                   * Maximum value, coordinate axis 3 (optional)
   
-                  If the value consists of four numbers, the coordinate reference system is
-                  WGS 84 longitude/latitude (http://www.opengis.net/def/crs/OGC/1.3/CRS84)
-                  unless a different coordinate reference system is specified in `crs`.
-  
-                  If the value consists of six numbers, the coordinate reference system is WGS 84
-                  longitude/latitude/ellipsoidal height (http://www.opengis.net/def/crs/OGC/0/CRS84h)
-                  unless a different coordinate reference system is specified in `crs`.
-  
-                  For WGS 84 longitude/latitude the values are in most cases the sequence of
-                  minimum longitude, minimum latitude, maximum longitude and maximum latitude.
-                  However, in cases where the box spans the antimeridian the first value
-                  (west-most box edge) is larger than the third value (east-most box edge).
-  
-                  If the vertical axis is included, the third and the sixth number are
-                  the bottom and the top of the 3-dimensional bounding box.
-  
+                  The default coordinate reference system is Amersfoort / RD New + NAP height, EPSG:7415
+                  (https://www.opengis.net/def/crs/EPSG/0/7415).
+                  Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported as `crs`.
+    
                   If a feature has multiple spatial geometry properties, it is the decision of the
                   server whether only a single spatial geometry property is used to determine
                   the extent or all relevant geometries.
@@ -366,17 +365,12 @@ components:
                   - 90
             crs:
               description: |-
-                Coordinate reference system of the coordinates in the spatial extent
-                (property `bbox`). The default reference system is WGS 84 longitude/latitude.
-                In the Core the only other supported coordinate reference system is
-                WGS 84 longitude/latitude/ellipsoidal height for coordinates with height.
-                Extensions may support additional coordinate reference systems and add
-                additional enum values.
+                Coordinate reference system of the returned coordinates. 
+                Currently only `https://www.opengis.net/def/crs/EPSG/0/7415` is supported.
               type: string
               enum:
-                - 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
-                - 'http://www.opengis.net/def/crs/OGC/0/CRS84h'
-              default: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
+                - 'https://www.opengis.net/def/crs/EPSG/0/7415'
+              default: 'https://www.opengis.net/def/crs/EPSG/0/7415'
     exception:
       type: object
       required:
@@ -436,7 +430,7 @@ components:
           example: Buildings
         description:
           type: string
-          example: Access to data about buildings in the Netherlands.
+          example: Access data about buildings in the Netherlands.
         links:
           type: array
           items:
@@ -449,7 +443,7 @@ components:
       properties:
         href:
           type: string
-          example: https://data.3dbag.nl/api/3dbag/collections/pand/items/0851100000000564/0851100000000564-0
+          example: https://api.3dbag.nl/collections/pand/items/NL.IMBAG.Pand.1655100000500568
         rel:
           type: string
           example: alternate
@@ -479,25 +473,25 @@ components:
             $ref: '#/components/schemas/landingPage'
           example:
             title: 3DBAG API
-            description: TODO data set description.
+            description: API for 3DBAG buildings of LoD 1.2, 1.3 & 2.2.
             links:
-              - href: https://data.3dbag.nl/api/3dbag
+              - href: https://api.3dbag.nl
                 rel: self
                 type: application/json
                 title: this document
-              - href: https://data.3dbag.nl/api/3dbag/api
+              - href: https://api.3dbag.nl/api
                 rel: service-desc
                 type: application/vnd.oai.openapi+json;version=3.0
                 title: the API definition
-              - href: https://data.3dbag.nl/api/3dbag/api.html
+              - href: https://api.3dbag.nl/api.html
                 rel: service-doc
                 type: text/html
                 title: the API documentation
-              - href: https://data.3dbag.nl/api/3dbag/conformance
+              - href: https://api.3dbag.nl/conformance
                 rel: conformance
                 type: application/json
-                title: OGC API conformance classes implemented by this server
-              - href: https://data.3dbag.nl/api/3dbag/collections
+                title: Conformance classes implemented by this server
+              - href: https://api.3dbag.nl/collections
                 rel: data
                 type: application/json
                 title: Information about the feature collections
@@ -531,9 +525,7 @@ components:
             $ref: '#/components/schemas/confClasses'
           example:
             conformsTo:
-              - 'http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core'
-              - 'http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30'
-              - 'https://cityjson.org/specs/2.0.0/'
+              - 'https://cityjson.org/specs/1.1.1/'
     Collections:
       description: |-
         The feature collections shared by this API.
@@ -546,20 +538,14 @@ components:
             $ref: '#/components/schemas/collections'
           example:
             links:
-              - href: https://data.3dbag.nl/api/3dbag/collections.json
+              - href: https://api.3dbag.nl/collections.json
                 rel: self
                 type: application/json
                 title: this document
-              # TODO: according to the specs, providing 'alternate' links is required (eg. text/html). But I don't want to support html from the beginning, because it is more work. But I'm not sure if the schema is still valid like this.
-              - href: https://data.3dbag.nl/postgres/3dbag_v210908_fd2cee53.zip #TODO: bulk download link
-                rel: enclosure
-                type: application/...
-                title: Bulk download (PostgreSQL dump)
-                length: ...
             collections:
               - id: pand
-                title: 3D pand # TODO: give title
-                description: The 3DBAG pand layer # TODO: describe
+                title: 3D pand
+                description: The 3DBAG pand layer
                 extent:
                   spatial:
                     bbox:
@@ -568,15 +554,11 @@ components:
                         - 287760
                         - 623690
                     crs: https://www.opengis.net/def/crs/EPSG/0/7415
-                  temporal:
-                    interval:
-                      - null
-                      - '2019-12-31T24:59:59Z' # TODO: '2019' is the max bouwjaar in the BAG. I just added the rest, because a timestamp is required. Not sure if we should reference the BAG dates or the AHN dates.
                 itemType: feature
                 crs:
                   - https://www.opengis.net/def/crs/EPSG/0/7415
                 links:
-                  - href: https://data.3dbag.nl/api/3dbag/collections/pand
+                  - href: https://api.3dbag.nl/collections/pand
                     rel: items
                     type: application/city+json
                     title: Pand
@@ -608,15 +590,11 @@ components:
                     - 287760
                     - 623690
                 crs: https://www.opengis.net/def/crs/EPSG/0/7415
-              temporal:
-                interval:
-                  - null
-                  - '2019-12-31T24:59:59Z' # TODO: '2019' is the max bouwjaar in the BAG. I just added the rest, because a timestamp is required. Not sure if we should reference the BAG dates or the AHN dates.
             itemType: feature
             crs:
               - https://www.opengis.net/def/crs/EPSG/0/7415
             links:
-              - href: https://data.3dbag.nl/api/3dbag/collections/pand
+              - href: https://api.3dbag.nl/collections/pand
                 rel: items
                 type: application/city+json
                 title: Pand
@@ -631,21 +609,10 @@ components:
                 title: CC BY 4.0
     Features:
       description: |-
-        The response is a document consisting of features in the collection.
+        A document consisting of features in the collection.
         The features included in the response are determined by the server
-        based on the query parameters of the request. To support access to
-        larger collections without overloading the client, the API supports
-        paged access with links to the next page, if more features are selected
-        that the page size.
-        
-        The `bbox` parameter can be used to select only a
-        subset of the features in the collection (the features that are in the
-        bounding box). The `bbox` parameter matches all features
-        in the collection that are not associated with a location, too.
-
-        The `limit` parameter may be used to control the subset of the
-        selected features that should be returned in the response, the page size.
-        Each page includes information about the number of selected and
+        based on the query parameters of the request.
+        If paging is used each page includes information about the number of selected and
         returned features (`numberMatched` and `numberReturned`) as well as
         links to support paging (link relation `next`).
       content:
@@ -654,15 +621,9 @@ components:
             $ref: '#/components/schemas/featureCollection'
     Feature:
       description: |-
-        Fetch a single feature with id `featureId` in *CityJSONFeature* format.
-        
+        A single feature with in the *CityJSONFeature* format.
         Feature hierarchy is represented by by the link relations `child` and `parent`.
       content:
         application/city+json:
           schema:
             $ref: '#/components/schemas/featureCityJSON'
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-KEY

@@ -106,7 +106,7 @@ def get_paginated_features(features: List[str],
         )
     obj["type"] = "FeatureCollection"
     obj["links"] = links
-    if not all(features):
+    if not all(features) or len(features) == 0:
         obj["numberReturned"] = 0
         obj["features"] = []
     else:
