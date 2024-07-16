@@ -8,7 +8,7 @@ You first need to install [poetry](https://python-poetry.org/docs/) and enable t
   poetry config virtualenvs.in-project true
 ```
 
-Then, from within the repo you can create a new virtual environmnet with:
+Then, from within the repo you can create a new virtual environment with:
 
 ```bash 
   poetry install
