@@ -72,7 +72,7 @@ def get_features_in_bbox(conn, bbox: List[float]) -> Tuple[str]:
     query = f"""
                 SELECT co.object_id
                 FROM cjdb.city_object co
-                WHERE st_within(co.ground_geometry,
+                WHERE st_intersects(co.ground_geometry,
                 ST_MakeEnvelope({bbox[0]},
                                 {bbox[1]},
                                 {bbox[2]},
