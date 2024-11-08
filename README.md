@@ -235,3 +235,7 @@ Note that in repeated tries, you need to always delete the validation session an
 ### `/collections/pand/items/{featureId}/surfaces`
 
 *2022-08-25 c30c8b72* – featureId: *NL.IMBAG.Pand.1655100000548671-0* (last record in the surfaces csv). Profiler: ~240ms (40ms get_surfaces, but it can be as low as 6ms for features that are at the beginning of the csv), same performance on local and godzilla. Firefox: 400-500ms.
+
+## 3DBAG organisation
+
+This software is part of the 3DBAG project. For more information visit the [3DBAG organisation](https://github.com/3DBAG).
