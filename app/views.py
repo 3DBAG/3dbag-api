@@ -1,6 +1,6 @@
 """3DBAG Features API backed by CityJSON
 
-Copyright 2022 3DGI <info@3dgi.nl>
+Copyright (c) 2022 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Balázs Dukai (3DGI)
 """
 
 import logging
