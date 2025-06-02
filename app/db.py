@@ -1,6 +1,6 @@
 """Database helper functions
 
-Copyright (c) 2022 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Balázs Dukai (3DGI)
+Copyright (c) 2023 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Balázs Dukai (3DGI)
 """
 
 import logging

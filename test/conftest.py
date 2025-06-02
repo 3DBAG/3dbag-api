@@ -1,3 +1,7 @@
+"""
+Copyright (c) 2023 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Balázs Dukai (3DGI)
+"""
+
 import pytest
 
 from app import app as flask_app
