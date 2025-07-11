@@ -51,7 +51,7 @@ class TestDev:
         assert feature_id in dict(promise)["CityObjects"]
 
 
-class TestOnGodzilla:
+class TestOnPodzilla:
     def test_collections_pand_items_bbox(self, app, authorization):
         bbox = "68194.423,395606.054,68608.839,396076.441"
         with app.test_request_context("/collections/pand/items",
