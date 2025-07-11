@@ -16,7 +16,7 @@ def get_connection() -> connection:
         based on environment variables.
     '''
     try:
-        logging.info("Connecting to Godzilla DB")
+        logging.info("Connecting to the DB")
         conn = pg.connect(user=os.environ["POSTGRES_USER"],
                           host=os.environ["POSTGRES_HOST"],
                           port=os.environ["POSTGRES_PORT"],

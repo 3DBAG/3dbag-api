@@ -26,7 +26,7 @@ POSTGRES_URL=postgresql://<user>:<password>@localhost:5433/baseregisters
 ```
 
 
-Finally, with an active tunnel to Godzilla, run:
+Finally, with an active tunnel to Podzilla, run:
 
 ```bash
   flask --app app  --debug run --host=0.0.0.0 --port=80  
@@ -34,10 +34,10 @@ Finally, with an active tunnel to Godzilla, run:
 
 and check: http://localhost:80
 
-## Development server
+## Development
 To start the development server first create an .env file with the following information:
 
-```
+```bash
 POSTGRES_USER=<user>
 POSTGRES_PWD=<password>
 POSTGRES_DB=baseregisters
@@ -50,6 +50,7 @@ POSTGRES_URL=postgresql://<user>:<password>@host.docker.internal:5433/baseregist
 Then you can run the following:
 
 ```bash
+  poetry self add poetry-plugin-export
 	poetry export --without dev --without-hashes --output ./requirements.txt --format "requirements.txt"
 	sh start.sh
 ```
@@ -57,6 +58,15 @@ Then you can run the following:
 and check: http://localhost:3200
 
 If you are working on an Apple M1 machine and you need to add the flag  `--platform linux/amd64\` to the docker run command in the `start.sh` file
+
+## Deployment on Podzilla:
+
+The repo is in `/opt/3dbag-api` on Podzilla Server. After you pull the changes, you need to run:
+
+```bash
+poetry export --without dev --without-hashes --output ./requirements.txt --format "requirements.txt"
+sh start_deployment.sh
+```
 
 ## User management
 
