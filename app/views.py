@@ -62,7 +62,7 @@ def landing_page():
         ]
     }
 
-
+@app.get('/api/')
 @app.get('/api')
 def api():
     rdir = Path(app.root_path) / "schemas"
@@ -75,7 +75,7 @@ def api():
 def api_html():
     return render_template("redoc_ui.html")
 
-
+@app.get('/conformance/')
 @app.get('/conformance')
 def conformance():
     return {
@@ -84,7 +84,7 @@ def conformance():
         ]
     }
 
-
+@app.get('/collections/')
 @app.get('/collections')
 def collections():
     return {
