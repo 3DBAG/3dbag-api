@@ -80,7 +80,7 @@ def api_html():
 def conformance():
     return {
         "conformsTo": [
-            "https://cityjson.org/specs/1.1.1/"
+            "https://cityjson.org/specs/2.0.1/"
         ]
     }
 
