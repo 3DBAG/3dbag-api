@@ -2,7 +2,6 @@
 Copyright (c) 2023 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Balázs Dukai (3DGI)
 """
 
-from typing import Tuple
 
 from pyproj import Transformer
 
@@ -11,8 +10,8 @@ STORAGE = "epsg:28992"
 
 
 def transform_bbox(
-    bbox: Tuple[float, float, float, float], from_crs: str, to_crs: str
-) -> Tuple[float, float, float, float]:
+    bbox: tuple[float, float, float, float], from_crs: str, to_crs: str
+) -> tuple[float, float, float, float]:
     """Transform a bbox from one CRS to another"""
     if from_crs == to_crs:
         return bbox
