@@ -2,16 +2,16 @@
 
 ## Run Locally:
 
-You first need to install [poetry](https://python-poetry.org/docs/) and enable the generation of vitual environments within a project:
+You first need to install [uv](https://docs.astral.sh/uv/):
 
 ```bash
-  poetry config virtualenvs.in-project true
+  curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 Then, from within the repo you can create a new virtual environment with:
 
 ```bash 
-  poetry install
+  uv sync
   source .venv/bin/activate
 ```
 
@@ -50,9 +50,8 @@ POSTGRES_URL=postgresql://<user>:<password>@host.docker.internal:5433/baseregist
 Then you can run the following:
 
 ```bash
-  poetry self add poetry-plugin-export
-	poetry export --without dev --without-hashes --output ./requirements.txt --format "requirements.txt"
-	sh start.sh
+  uv export --no-dev --no-hashes --format requirements-txt > requirements.txt
+  sh start.sh
 ```
 
 and check: http://localhost:3200
@@ -64,7 +63,7 @@ If you are working on an Apple M1 machine and you need to add the flag  `--platf
 The repo is in `/opt/3dbag-api` on Podzilla Server. After you pull the changes, you need to run:
 
 ```bash
-poetry export --without dev --without-hashes --output ./requirements.txt --format "requirements.txt"
+uv export --no-dev --no-hashes --format requirements-txt > requirements.txt
 sh start_deployment.sh
 ```
 
@@ -185,7 +184,7 @@ docker run \
 Extract requirements file:
 
 ```
-poetry export -f requirements.txt -o requirements.txt --without-hashes
+uv export --no-dev --no-hashes --format requirements-txt > requirements.txt
 ```
 
 Start the 3DBAG API service (from start.sh)

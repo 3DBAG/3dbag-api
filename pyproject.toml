@@ -1,29 +1,43 @@
-[tool.poetry]
+[project]
 name = "3dbag-api"
 version = "0.1.0"
 description = ""
-authors = ["Gina Stavropoulou <gina@Ginas-MacBook-Pro.local>"]
+authors = [{name = "Gina Stavropoulou", email = "gstavropoulou@tudelft.nl"}]
 readme = "README.md"
+requires-python = ">=3.10"
 
-[tool.poetry.dependencies]
-python = "^3.8.1"
-cjio = "^0.9"
-Flask = "^2.2.3"
-Flask-HTTPAuth = "^4.7.0"
-PyYAML = "^6.0"
-Flask-SQLAlchemy = "^3.0.3"
-shapely = "^2.0.1"
-pyproj = "^3.4.1"
-psycopg2 = "^2.9.7"
+dependencies = [
+    "cjio>=0.9,<1.0",
+    "flask>=2.2.3,<3.0",
+    "flask-httpauth>=4.7.0,<5.0",
+    "jinja2>=3.1.3",
+    "werkzeug>=3.0.1",
+    "urllib3>=2.7.0",
+    "requests>=2.32.0",
+    "certifi>=2024.2.2",
+    "pyyaml>=6.0,<7.0",
+    "flask-sqlalchemy>=3.0.3,<4.0",
+    "shapely>=2.0.1,<3.0",
+    "pyproj>=3.4.1,<4.0",
+    "psycopg2>=2.9.7,<3.0",
+    "cjdb",
+]
+
+[dependency-groups]
+dev = [
+    "black>=23.1.0,<24",
+    "mypy>=1.0.1,<2",
+    "pytest>=7.2.1,<8",
+    "isort>=5.12.0,<6",
+    "pylint>=2.16.4,<3",
+]
+
+[tool.uv.sources]
 cjdb = { git = "https://github.com/cityjson/cjdb.git", branch = "develop" }
 
-[tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
-mypy = "^1.0.1"
-pytest = "^7.2.1"
-isort = "^5.12.0"
-pylint = "^2.16.4"
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

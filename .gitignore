@@ -1,3 +1,5 @@
 .idea
 .run
 *__pycache__
+.venv
+requirements.txt
