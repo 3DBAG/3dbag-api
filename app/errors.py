@@ -27,6 +27,19 @@ def handle_exception(e):
     return response
 
 
+@app.errorhandler(500)
+def handle_500(e):
+    logging.exception("Internal server error")
+    return jsonify(
+        code=500,
+        name="Internal Server Error",
+        description=(
+            "The server encountered an internal error and was unable to "
+            "complete your request."
+        ),
+    ), 500
+
+
 @app.errorhandler(404)
 def resource_not_found(e):
     e.description = (

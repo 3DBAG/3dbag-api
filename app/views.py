@@ -24,9 +24,14 @@ def _get_default_feature_set():
     global _DEFAULT_FEATURE_SET
     if _DEFAULT_FEATURE_SET is None:
         conn = db.Db()
-        logging.debug("Collecting all available object ids.")
-        _DEFAULT_FEATURE_SET = index.get_all_object_ids(conn)
-        conn.conn.close()
+        try:
+            logging.debug("Collecting all available object ids.")
+            _DEFAULT_FEATURE_SET = index.get_all_object_ids(conn)
+        except Exception:
+            logging.exception("Failed to load feature set from DB.")
+            raise
+        finally:
+            conn.conn.close()
     return _DEFAULT_FEATURE_SET
 
 
@@ -187,21 +192,21 @@ def pand_items():
         bbox=request.args.get("bbox", None)
     )
     conn = db.Db()
+    try:
+        if query_params.bbox:
+            feature_subset = bbox_cache.get(conn, query_params.bbox)
+        else:
+            feature_subset = _get_default_feature_set()
 
-    if query_params.bbox:
-        feature_subset = bbox_cache.get(conn, query_params.bbox)
-
-    else:
-        feature_subset = _get_default_feature_set()
-
-    logging.debug(f" Selection of {len(feature_subset)}  features.")
-    response = make_response(jsonify(loading.get_paginated_features(
-        feature_subset,
-        url_for("pand_items", _external=True), conn,
-        query_params)), 200)
-    response.headers["Content-Crs"] = f"<{query_params.crs}>"
-    conn.conn.close()
-    return response
+        logging.debug(f" Selection of {len(feature_subset)}  features.")
+        response = make_response(jsonify(loading.get_paginated_features(
+            feature_subset,
+            url_for("pand_items", _external=True), conn,
+            query_params)), 200)
+        response.headers["Content-Crs"] = f"<{query_params.crs}>"
+        return response
+    finally:
+        conn.conn.close()
 
 
 @app.get('/collections/pand/items/<featureId>')
