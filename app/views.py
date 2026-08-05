@@ -45,7 +45,7 @@ def landing_page():
                 "href": request.url,
                 "rel": "self",
                 "type": "application/json",
-                "title": "this document"
+                "title": "3DBAG API"
             },
             {
                 "href": url_for("api", _external=True),
@@ -108,7 +108,7 @@ def collections():
                 "href": url_for("collections", _external=True),
                 "rel": "self",
                 "type": "application/json",
-                "title": "this document"
+                "title": "Feature collections"
             },
         ],
         "crs": [
@@ -150,7 +150,7 @@ def pand():
                 "href": url_for("pand", _external=True),
                 "rel": "self",
                 "type": "application/json",
-                "title": "this document"
+                "title": "Pand collection"
             },
             {
                 "href": url_for("pand_items", _external=True),
@@ -238,7 +238,7 @@ def get_feature(featureId):
             "href": request.url,
             "rel": "self",
             "type": "application/json",
-            "title": "this document"
+            "title": "Feature details"
         },
         {
             "href": url_for("pand", _external=True),
