@@ -4,13 +4,8 @@ Copyright (c) 2023 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Bal
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple, Union
 
 from flask import abort
-from pyproj import exceptions
-
-from app.transformations import (transform_bbox_from_default_to_storage,
-                                 transform_bbox_from_storage_to_default)
 
 STORAGE_CRS = "http://www.opengis.net/def/crs/EPSG/0/7415"
 
@@ -28,11 +23,11 @@ DEFAULT_MAX_LIMIT = 100
 @dataclass
 class Parameters:
     """ Class for holding feature parameters"""
-    offset: Union[int, str]
-    limit: Union[int, str]
+    offset: int | str
+    limit: int | str
     crs: str
     bbox_crs: str
-    bbox: Optional[Union[Tuple[float, float, float, float], str]] = None
+    bbox: tuple[float, float, float, float] | str | None = None
 
     def __post_init__(self):
         try:

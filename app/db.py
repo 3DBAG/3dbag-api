@@ -6,6 +6,7 @@ Copyright (c) 2023 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Bal
 import logging
 import os
 import sqlite3
+
 import psycopg2 as pg
 from psycopg2.extensions import connection
 
@@ -30,7 +31,7 @@ def get_connection() -> connection:
     return conn
 
 
-class Db(object):
+class Db:
     """A database connection class.
 
     :raise: :class:`psycopg2.OperationalError`

@@ -4,7 +4,6 @@ Copyright (c) 2023 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Bal
 
 import json
 import logging
-from typing import List, Tuple
 
 from cjdb.modules.exporter import Exporter
 from flask import request
@@ -12,9 +11,9 @@ from flask import request
 from app.parameters import Parameters
 
 
-def load_cityjsonfeature(featureId: List[str],
+def load_cityjsonfeature(featureId: list[str],
                          connection) -> \
-        Tuple[str, str]:
+        tuple[str, str]:
     """Loads a single feature."""
     with Exporter(
         connection=connection.conn,
@@ -29,9 +28,9 @@ def load_cityjsonfeature(featureId: List[str],
     return (json.loads(metadata), json.loads(feature[0]))
 
 
-def load_cityjsonfeatures(featureIds: List[str],
+def load_cityjsonfeatures(featureIds: list[str],
                           connection) -> \
-        Tuple[str, List[str]]:
+        tuple[str, list[str]]:
     """Loads a group of features."""
     feature_ids_str = (
         str(
@@ -51,7 +50,7 @@ def load_cityjsonfeatures(featureIds: List[str],
             [json.loads(feature) for feature in features])
 
 
-def get_paginated_features(features: List[str],
+def get_paginated_features(features: list[str],
                            url: str,
                            connection,
                            parameters: Parameters):
