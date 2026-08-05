@@ -17,10 +17,17 @@ from app.parameters import (DEFAULT_LIMIT, DEFAULT_OFFSET, STORAGE_CRS,
 
 bbox_cache = index.BBOXCache()
 
-conn = db.Db()
-logging.debug("Collecting all available object ids.")
-DEFAULT_FEATURE_SET = index.get_all_object_ids(conn)
-conn.conn.close()
+_DEFAULT_FEATURE_SET = None
+
+
+def _get_default_feature_set():
+    global _DEFAULT_FEATURE_SET
+    if _DEFAULT_FEATURE_SET is None:
+        conn = db.Db()
+        logging.debug("Collecting all available object ids.")
+        _DEFAULT_FEATURE_SET = index.get_all_object_ids(conn)
+        conn.conn.close()
+    return _DEFAULT_FEATURE_SET
 
 
 @app.get('/')
@@ -185,7 +192,7 @@ def pand_items():
         feature_subset = bbox_cache.get(conn, query_params.bbox)
 
     else:
-        feature_subset = DEFAULT_FEATURE_SET
+        feature_subset = _get_default_feature_set()
 
     logging.debug(f" Selection of {len(feature_subset)}  features.")
     response = make_response(jsonify(loading.get_paginated_features(
