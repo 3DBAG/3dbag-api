@@ -2,13 +2,12 @@
 
 Copyright (c) 2022 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Balázs Dukai (3DGI)
 """
-from typing import Tuple, List
+import json
 from bisect import bisect_left
 from pathlib import Path
-import json
 
-from shapely.strtree import STRtree
 from shapely.geometry import shape
+from shapely.strtree import STRtree
 
 
 class BBOXCache:
@@ -27,11 +26,11 @@ class BBOXCache:
         self.feature_subset = ()
         self.bbox = ()
 
-    def add(self, feature_subset, bbox: Tuple[str, str, str, str]):
+    def add(self, feature_subset, bbox: tuple[str, str, str, str]):
         self.feature_subset = feature_subset
         self.bbox = bbox
 
-    def get(self, conn, bbox: Tuple[float, float, float, float]):
+    def get(self, conn, bbox: tuple[float, float, float, float]):
         """Get the featureIDs in the `bbox`.
         BBOX comparison is string comparison of
         the coordinate values that are formatted
@@ -51,7 +50,7 @@ class BBOXCache:
         self.bbox = ()
 
 
-def get_all_object_ids(conn) -> Tuple[str]:
+def get_all_object_ids(conn) -> tuple[str]:
     """Retrieve all the object ids from the DB"""
     # TODO OPTIMIZE: we could keep the shapely.rtree in memory instead
     # of querying in sqlite, provided that there is enough RAM for it (~1.8GB).
@@ -62,7 +61,7 @@ def get_all_object_ids(conn) -> Tuple[str]:
     return tuple(t[0] for t in conn.get_query(query))
 
 
-def get_features_in_bbox(conn, bbox: List[float]) -> Tuple[str]:
+def get_features_in_bbox(conn, bbox: list[float]) -> tuple[str]:
     """
     Retrieve from the DB all the object ids of the buildings
     lying in the input bbox.
@@ -173,7 +172,7 @@ def morton_code(x: float, y: float):
     return interleave(int(x * 100), int(y * 100))
 
 
-def rev_morton_code(morton_key: int) -> Tuple[float, float]:
+def rev_morton_code(morton_key: int) -> tuple[float, float]:
     """Get the coordinates from a Morton-key"""
     x, y = deinterleave(morton_key)
     return float(x) / 100.0, float(y) / 100.0

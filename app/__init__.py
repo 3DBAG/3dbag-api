@@ -6,8 +6,8 @@ import logging
 import os
 
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_httpauth import HTTPBasicAuth
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 logging.basicConfig(level=logging.DEBUG)
@@ -24,5 +24,4 @@ app.wsgi_app = ProxyFix(
 auth = HTTPBasicAuth()
 db_users = SQLAlchemy(app)
 
-from app import views
-from app import errors
+from app import errors, views  # noqa: E402, F401

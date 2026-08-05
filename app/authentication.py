@@ -2,10 +2,12 @@
 Copyright (c) 2023 TU Delft 3D geoinformation group, Ravi Peters (3DGI), and Balázs Dukai (3DGI)
 """
 
-from app import db_users, auth
 from enum import Enum
-from werkzeug.security import check_password_hash, generate_password_hash
+
 from flask import g
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from app import auth, db_users
 
 
 class Permission(Enum):
@@ -32,7 +34,7 @@ class UserAuth(db_users.Model):
         self.role = role
 
     def __repr__(self):
-        return '<User %r>' % self.username
+        return f"<User {self.username!r}>"
 
     @property
     def password(self):

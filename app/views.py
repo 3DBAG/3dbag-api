@@ -7,13 +7,11 @@ import logging
 from pathlib import Path
 
 import yaml
-from flask import (abort, jsonify, make_response, render_template, request,
-                   url_for)
+from flask import abort, jsonify, make_response, render_template, request, url_for
 
-from app import app, auth, db, db_users, index, loading
-from app.authentication import Permission, UserAuth
-from app.parameters import (DEFAULT_LIMIT, DEFAULT_OFFSET, STORAGE_CRS,
-                            Parameters)
+from app import app, db, db_users, index, loading
+from app.authentication import UserAuth
+from app.parameters import DEFAULT_LIMIT, DEFAULT_OFFSET, STORAGE_CRS, Parameters
 
 bbox_cache = index.BBOXCache()
 
@@ -122,7 +120,10 @@ def pand():
     return {
         "id": "pand",
         "title": "Pand",
-        "description": "3D building models based on the 'pand' layer of the BAG dataset.",
+        "description": (
+            "3D building models based on the 'pand' layer "
+            "of the BAG dataset."
+        ),
         "extent": {
             "spatial": {
                 "bbox": [
