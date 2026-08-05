@@ -1,4 +1,4 @@
-FROM tiangolo/uwsgi-nginx-flask:python3.8
+FROM tiangolo/uwsgi-nginx-flask:python3.10
 ENV LISTEN_PORT 3200
 EXPOSE 3200
 ENV STATIC_URL /static
