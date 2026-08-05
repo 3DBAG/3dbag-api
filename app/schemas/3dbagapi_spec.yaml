@@ -478,7 +478,7 @@ components:
               - href: https://api.3dbag.nl
                 rel: self
                 type: application/json
-                title: this document
+                title: 3DBAG API
               - href: https://api.3dbag.nl/api
                 rel: service-desc
                 type: application/vnd.oai.openapi+json;version=3.0
@@ -541,7 +541,7 @@ components:
               - href: https://api.3dbag.nl/collections.json
                 rel: self
                 type: application/json
-                title: this document
+                title: Feature collections
             collections:
               - id: pand
                 title: 3D pand
