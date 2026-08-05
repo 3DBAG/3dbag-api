@@ -15,6 +15,7 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ["POSTGRES_URL"]
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['PROPAGATE_EXCEPTIONS'] = False
 
 app.wsgi_app = ProxyFix(
     app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
@@ -24,3 +25,4 @@ auth = HTTPBasicAuth()
 db_users = SQLAlchemy(app)
 
 from app import views
+from app import errors
