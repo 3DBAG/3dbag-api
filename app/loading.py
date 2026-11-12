@@ -11,19 +11,37 @@ from flask import request
 from app.parameters import Parameters
 
 
-def load_cityjsonfeature(featureId: list[str],
+class FeatureNotFoundError(LookupError):
+    """The requested IDs do not identify an exportable CityJSON feature."""
+
+
+def _load_exporter_data(exporter):
+    """Translate the CLI exporter's exits into request-level exceptions."""
+    try:
+        exporter.get_data()
+    except SystemExit as error:
+        if error.code == 1:
+            raise FeatureNotFoundError("No matching CityJSON features.") from error
+        raise RuntimeError("CityJSON exporter exited unexpectedly.") from error
+
+
+def load_cityjsonfeature(featureId: str,
                          connection) -> \
         tuple[str, str]:
     """Loads a single feature."""
+    with connection.conn.cursor() as cursor:
+        query = cursor.mogrify("SELECT %s AS object_id", (featureId,)).decode()
     with Exporter(
         connection=connection.conn,
         schema="cjdb",
-        sqlquery=f"SELECT '{featureId}' as object_id",
+        sqlquery=query,
         output=None,
     ) as exporter:
         logging.info(exporter.sqlquery)
-        exporter.get_data()
+        _load_exporter_data(exporter)
         feature = exporter.get_features()
+        if not feature:
+            raise FeatureNotFoundError(featureId)
         metadata = exporter.get_metadata()
     return (json.loads(metadata), json.loads(feature[0]))
 
@@ -43,7 +61,10 @@ def load_cityjsonfeatures(featureIds: list[str],
         sqlquery=f"""VALUES {feature_ids_str}""",
         output=None,
     ) as exporter:
-        exporter.get_data()
+        try:
+            _load_exporter_data(exporter)
+        except FeatureNotFoundError:
+            return {}, []
         features = exporter.get_features()
         metadata = exporter.get_metadata()
     return (json.loads(metadata),
@@ -119,6 +140,6 @@ def get_paginated_features(features: list[str],
         ]
         metadata, cityjsonfeatures = load_cityjsonfeatures(res, connection)
         obj["metadata"] = metadata
-        obj["numberReturned"] = len(res)
+        obj["numberReturned"] = len(cityjsonfeatures)
         obj["features"] = cityjsonfeatures
     return obj

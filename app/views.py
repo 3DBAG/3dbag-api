@@ -231,8 +231,12 @@ def get_feature(featureId):
         bbox=request.args.get("bbox", None)
     )
     conn = db.Db()
-    metadata, cityjsonfeature = loading.load_cityjsonfeature(featureId, conn)
-    conn.conn.close()
+    try:
+        metadata, cityjsonfeature = loading.load_cityjsonfeature(featureId, conn)
+    except loading.FeatureNotFoundError:
+        abort(404)
+    finally:
+        conn.conn.close()
 
     links = [
         {
