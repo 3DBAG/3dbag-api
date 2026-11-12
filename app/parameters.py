@@ -48,8 +48,8 @@ class Parameters:
                 error)
             abort(400)
 
-        if self.limit < 0:
-            logging.error("Limit must be an positive integer.")
+        if self.limit <= 0:
+            logging.error("Limit must be a positive integer.")
             abort(400)
         
         if self.offset < 0:
