@@ -96,6 +96,37 @@ def test_no_exportable_features_in_a_batch_does_not_exit(export_request):
     assert loading.load_cityjsonfeatures([FEATURE_ID], connection) == ({}, [])
 
 
+def test_empty_id_list_skips_exporter(export_request):
+    connection, _, _ = export_request
+
+    assert loading.load_cityjsonfeatures([], connection) == ({}, [])
+    loading.Exporter.assert_not_called()
+
+
+@pytest.mark.parametrize("offset", [2, 601])
+@pytest.mark.parametrize("bbox", [None, "1,2,3,4"])
+def test_offset_beyond_results_returns_empty_page(
+    client, export_request, monkeypatch, offset, bbox
+):
+    connection, _, _ = export_request
+    monkeypatch.setattr(views, "_get_default_feature_set", lambda: [FEATURE_ID])
+    monkeypatch.setattr(views.bbox_cache, "get", lambda conn, bounds: [FEATURE_ID])
+    query = {"offset": offset, "limit": 50}
+    if bbox is not None:
+        query["bbox"] = bbox
+
+    response = client.get("/collections/pand/items", query_string=query)
+
+    assert response.status_code == 200
+    assert response.json["type"] == "FeatureCollection"
+    assert response.json["numberMatched"] == 1
+    assert response.json["numberReturned"] == 0
+    assert response.json["features"] == []
+    assert not any(link["rel"] == "next" for link in response.json["links"])
+    loading.Exporter.assert_not_called()
+    connection.conn.close.assert_called_once()
+
+
 def test_missing_batch_returns_empty_page_and_keeps_application_running(
     client, export_request, monkeypatch
 ):

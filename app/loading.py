@@ -50,6 +50,9 @@ def load_cityjsonfeatures(featureIds: list[str],
                           connection) -> \
         tuple[str, list[str]]:
     """Loads a group of features."""
+    if not featureIds:
+        return {}, []
+
     feature_ids_str = (
         str(
             [[x] for x in featureIds])[1:-1].replace(
